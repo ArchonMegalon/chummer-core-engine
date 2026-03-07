@@ -36,12 +36,13 @@ public sealed class AiExplainServiceTests
         Assert.AreEqual("sha256:coach", projection.RuntimeFingerprint);
         Assert.AreEqual("sr5", projection.RulesetId);
         Assert.AreEqual(AiExplainEntryKinds.QuickActionAvailability, projection.Kind);
-        Assert.AreEqual("Session Quick Actions", projection.Title);
+        Assert.AreEqual($"ruleset.capability.{RulePackCapabilityIds.SessionQuickActions}.title", projection.TitleKey);
         Assert.AreEqual(RulesetCapabilityInvocationKinds.Script, projection.InvocationKind);
         Assert.IsTrue(projection.Explainable);
         Assert.IsTrue(projection.SessionSafe);
         Assert.IsGreaterThanOrEqualTo(4, projection.Fragments?.Count ?? 0);
         Assert.IsGreaterThanOrEqualTo(1, projection.Diagnostics?.Count ?? 0);
+        Assert.IsFalse(string.IsNullOrWhiteSpace(projection.SummaryKey));
     }
 
     [TestMethod]

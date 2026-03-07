@@ -1198,18 +1198,32 @@ public class RulesetSeamContractsTests
                 new SessionExplainEntry(
                     EntryId: "explain-1",
                     Kind: SessionExplainEntryKinds.TrackerThreshold,
-                    Title: "Stun Threshold",
-                    Summary: "Warning threshold at 8.",
-                    Fragments: ["stun-warning at 8"],
+                    TitleKey: "session.explain.entry.tracker-threshold.title",
+                    TitleParameters: [],
+                    SummaryKey: "session.explain.entry.tracker-threshold.summary",
+                    SummaryParameters: [new RulesetExplainParameter("threshold", RulesetCapabilityBridge.FromObject(8))],
+                    Fragments:
+                    [
+                        new SessionExplainFragment(
+                            FragmentKey: "session.explain.fragment.tracker-threshold",
+                            Parameters: [new RulesetExplainParameter("threshold", RulesetCapabilityBridge.FromObject(8))])
+                    ],
                     ProviderId: "sr5-core/tracker-threshold",
                     PackId: "sr5-core",
                     GasUsed: 18),
                 new SessionExplainEntry(
                     EntryId: "explain-2",
                     Kind: SessionExplainEntryKinds.QuickActionAvailability,
-                    Title: "Fire Weapon",
-                    Summary: "Available because the action economy is open.",
-                    Fragments: ["phase=open"],
+                    TitleKey: "session.explain.entry.quick-action.title",
+                    TitleParameters: [new RulesetExplainParameter("actionId", RulesetCapabilityBridge.FromObject("fire-weapon"))],
+                    SummaryKey: "session.explain.entry.quick-action.summary",
+                    SummaryParameters: [new RulesetExplainParameter("phase", RulesetCapabilityBridge.FromObject("open"))],
+                    Fragments:
+                    [
+                        new SessionExplainFragment(
+                            FragmentKey: "session.explain.fragment.quick-action.phase",
+                            Parameters: [new RulesetExplainParameter("phase", RulesetCapabilityBridge.FromObject("open"))])
+                    ],
                     ProviderId: "sr5-core/quick-action",
                     PackId: "sr5-core",
                     GasUsed: 22)
@@ -2527,7 +2541,10 @@ public class RulesetSeamContractsTests
             Explain: true,
             GasBudget: gasBudget);
         RulesetExplainTrace explainTrace = new(
-            SubjectId: "derive.stat",
+            TargetKey: "derive.stat.body",
+            FinalValue: RulesetCapabilityBridge.FromObject(3),
+            SummaryKey: "ruleset.explain.summary.derive.stat.body",
+            SummaryParameters: [new RulesetExplainParameter("value", RulesetCapabilityBridge.FromObject(3))],
             Providers:
             [
                 new RulesetProviderTrace(
@@ -2535,22 +2552,27 @@ public class RulesetSeamContractsTests
                     CapabilityId: RulePackCapabilityIds.DeriveStat,
                     PackId: "house-rules",
                     Success: true,
-                    ExplainFragments:
+                    Steps:
                     [
-                        new RulesetExplainFragment(
-                            Label: "Base Body",
-                            Value: "3",
-                            Reason: "Metatype base value.",
+                        new RulesetTraceStep(
+                            ProviderId: "sr5/derive.stat.body",
+                            CapabilityId: RulePackCapabilityIds.DeriveStat,
                             PackId: "sr5-core",
-                            ProviderId: "sr5/derive.stat.body")
+                            ExplanationKey: "ruleset.explain.step.derive.stat.base",
+                            ExplanationParameters:
+                            [
+                                new RulesetExplainParameter("metatype", RulesetCapabilityBridge.FromObject("human")),
+                                new RulesetExplainParameter("value", RulesetCapabilityBridge.FromObject(3))
+                            ],
+                            Category: "base",
+                            Modifier: 3m,
+                            Certain: true)
                     ],
                     GasUsage: new RulesetGasUsage(
                         ProviderInstructionsConsumed: 120,
                         RequestInstructionsConsumed: 120,
-                        PeakMemoryBytes: 4096),
-                    Messages: ["Derived body successfully."])
+                        PeakMemoryBytes: 4096))
             ],
-            Messages: ["Trace captured."],
             AggregateGasUsage: new RulesetGasUsage(
                 ProviderInstructionsConsumed: 120,
                 RequestInstructionsConsumed: 120,
@@ -2571,7 +2593,10 @@ public class RulesetSeamContractsTests
             Messages: ["ok"],
             Explain: explainTrace);
         RulesetExplainTrace scriptExplainTrace = new(
-            SubjectId: "session.quick-actions",
+            TargetKey: "session.quick-actions",
+            FinalValue: RulesetCapabilityBridge.FromObject(2),
+            SummaryKey: "ruleset.explain.summary.session.quick-actions",
+            SummaryParameters: [new RulesetExplainParameter("quickActions", RulesetCapabilityBridge.FromObject(2))],
             Providers:
             [
                 new RulesetProviderTrace(
@@ -2579,22 +2604,26 @@ public class RulesetSeamContractsTests
                     CapabilityId: RulePackCapabilityIds.SessionQuickActions,
                     PackId: "house-rules",
                     Success: true,
-                    ExplainFragments:
+                    Steps:
                     [
-                        new RulesetExplainFragment(
-                            Label: "Quick Action Set",
-                            Value: "2",
-                            Reason: "Pinned quick actions are session-safe.",
+                        new RulesetTraceStep(
+                            ProviderId: "sr5/session.quick-actions",
+                            CapabilityId: RulePackCapabilityIds.SessionQuickActions,
                             PackId: "house-rules",
-                            ProviderId: "sr5/session.quick-actions")
+                            ExplanationKey: "ruleset.explain.step.session.quick-actions.pinned",
+                            ExplanationParameters:
+                            [
+                                new RulesetExplainParameter("quickActions", RulesetCapabilityBridge.FromObject(2))
+                            ],
+                            Category: "availability",
+                            Modifier: 2m,
+                            Certain: true)
                     ],
                     GasUsage: new RulesetGasUsage(
                         ProviderInstructionsConsumed: 80,
                         RequestInstructionsConsumed: 80,
-                        PeakMemoryBytes: 2048),
-                    Messages: ["Prepared quick actions."])
+                        PeakMemoryBytes: 2048))
             ],
-            Messages: ["Script trace captured."],
             AggregateGasUsage: new RulesetGasUsage(
                 ProviderInstructionsConsumed: 80,
                 RequestInstructionsConsumed: 80,

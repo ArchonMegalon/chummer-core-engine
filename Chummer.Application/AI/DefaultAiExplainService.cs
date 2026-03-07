@@ -75,15 +75,18 @@ public sealed class DefaultAiExplainService : IAiExplainService
 
         string explainEntryId = NormalizeOptional(query.ExplainEntryId) ?? descriptor.CapabilityId;
         string? packId = TryResolvePackId(providerId, runtimeSummary.RulePacks);
-        string summary = invocation.Explain?.Messages.FirstOrDefault()
-            ?? invocation.Diagnostics.FirstOrDefault()?.Message
-            ?? $"{descriptor.Title} resolved through runtime '{runtimeSummary.Title}'.";
+        string summaryKey = invocation.Explain?.SummaryKey
+            ?? (invocation.Diagnostics.Count > 0 ? "ruleset.explain.summary.diagnostic" : "ruleset.explain.summary.default");
+        IReadOnlyList<RulesetExplainParameter> summaryParameters = invocation.Explain?.SummaryParameters
+            ?? BuildDefaultSummaryParameters(descriptor, runtimeSummary, invocation.Diagnostics.FirstOrDefault());
 
         return new AiExplainValueProjection(
             ExplainEntryId: explainEntryId,
             Kind: ResolveEntryKind(descriptor),
-            Title: descriptor.Title,
-            Summary: summary,
+            TitleKey: $"ruleset.capability.{descriptor.CapabilityId}.title",
+            TitleParameters: [],
+            SummaryKey: summaryKey,
+            SummaryParameters: summaryParameters,
             RuntimeFingerprint: runtimeSummary.RuntimeFingerprint,
             RulesetId: runtimeSummary.RulesetId,
             CharacterId: characterDigest?.CharacterId,
@@ -96,7 +99,7 @@ public sealed class DefaultAiExplainService : IAiExplainService
             ProviderGasBudget: descriptor.DefaultGasBudget.ProviderInstructionLimit,
             RequestGasBudget: descriptor.DefaultGasBudget.RequestInstructionLimit,
             Fragments: BuildFragments(runtimeSummary, characterDigest, descriptor, providerId, packId, invocation),
-            Diagnostics: invocation.Diagnostics.Select(static diagnostic => diagnostic.Message).ToArray());
+            Diagnostics: invocation.Diagnostics);
     }
 
     private static IReadOnlyList<RulesetCapabilityArgument> BuildInvocationArguments(
@@ -136,25 +139,48 @@ public sealed class DefaultAiExplainService : IAiExplainService
     {
         List<AiExplainFragmentProjection> fragments =
         [
-            new(AiExplainFragmentKinds.Input, "Runtime", runtimeSummary.Title),
-            new(AiExplainFragmentKinds.Constant, "Ruleset", runtimeSummary.RulesetId.ToUpperInvariant()),
-            new(AiExplainFragmentKinds.Constant, "Capability", descriptor.CapabilityId),
-            new(AiExplainFragmentKinds.Constant, "Invocation", descriptor.InvocationKind)
+            new(
+                AiExplainFragmentKinds.Input,
+                "ruleset.explain.fragment.runtime",
+                [Param("runtimeFingerprint", runtimeSummary.RuntimeFingerprint), Param("rulesetId", runtimeSummary.RulesetId)],
+                RulesetCapabilityBridge.FromObject(runtimeSummary.RuntimeFingerprint)),
+            new(
+                AiExplainFragmentKinds.Constant,
+                "ruleset.explain.fragment.capability",
+                [Param("capabilityId", descriptor.CapabilityId)],
+                RulesetCapabilityBridge.FromObject(descriptor.CapabilityId)),
+            new(
+                AiExplainFragmentKinds.Constant,
+                "ruleset.explain.fragment.invocation",
+                [Param("invocationKind", descriptor.InvocationKind)],
+                RulesetCapabilityBridge.FromObject(descriptor.InvocationKind))
         ];
 
         if (characterDigest is not null)
         {
-            fragments.Add(new AiExplainFragmentProjection(AiExplainFragmentKinds.Input, "Character", characterDigest.DisplayName));
+            fragments.Add(new AiExplainFragmentProjection(
+                AiExplainFragmentKinds.Input,
+                "ruleset.explain.fragment.character",
+                [Param("characterId", characterDigest.CharacterId), Param("characterName", characterDigest.DisplayName)],
+                RulesetCapabilityBridge.FromObject(characterDigest.CharacterId)));
         }
 
         if (providerId is not null)
         {
-            fragments.Add(new AiExplainFragmentProjection(AiExplainFragmentKinds.ProviderStep, "Provider", providerId));
+            fragments.Add(new AiExplainFragmentProjection(
+                AiExplainFragmentKinds.ProviderStep,
+                "ruleset.explain.fragment.provider",
+                [Param("providerId", providerId)],
+                RulesetCapabilityBridge.FromObject(providerId)));
         }
 
         if (packId is not null)
         {
-            fragments.Add(new AiExplainFragmentProjection(AiExplainFragmentKinds.ProviderStep, "RulePack", packId));
+            fragments.Add(new AiExplainFragmentProjection(
+                AiExplainFragmentKinds.ProviderStep,
+                "ruleset.explain.fragment.pack",
+                [Param("packId", packId)],
+                RulesetCapabilityBridge.FromObject(packId)));
         }
 
         if (invocation.Explain is not null)
@@ -163,15 +189,24 @@ public sealed class DefaultAiExplainService : IAiExplainService
             {
                 fragments.Add(new AiExplainFragmentProjection(
                     AiExplainFragmentKinds.ProviderStep,
-                    provider.ProviderId,
-                    $"{provider.GasUsage.ProviderInstructionsConsumed}/{provider.GasUsage.RequestInstructionsConsumed} gas"));
+                    "ruleset.explain.fragment.provider.gas",
+                    [
+                        Param("providerId", provider.ProviderId),
+                        Param("providerInstructionsConsumed", provider.GasUsage.ProviderInstructionsConsumed),
+                        Param("requestInstructionsConsumed", provider.GasUsage.RequestInstructionsConsumed),
+                        Param("peakMemoryBytes", provider.GasUsage.PeakMemoryBytes)
+                    ],
+                    RulesetCapabilityBridge.FromObject(provider.GasUsage.ProviderInstructionsConsumed)));
 
-                foreach (RulesetExplainFragment explainFragment in provider.ExplainFragments)
+                foreach (RulesetTraceStep step in provider.Steps)
                 {
                     fragments.Add(new AiExplainFragmentProjection(
                         AiExplainFragmentKinds.Note,
-                        explainFragment.Label,
-                        FormatValue(explainFragment.Value ?? explainFragment.Reason ?? string.Empty)));
+                        step.ExplanationKey,
+                        step.ExplanationParameters,
+                        step.Modifier is decimal modifier
+                            ? RulesetCapabilityBridge.FromObject(modifier)
+                            : null));
                 }
             }
         }
@@ -181,22 +216,25 @@ public sealed class DefaultAiExplainService : IAiExplainService
             {
                 fragments.Add(new AiExplainFragmentProjection(
                     AiExplainFragmentKinds.Output,
-                    output.Key,
-                    FormatValue(output.Value)));
+                    "ruleset.explain.fragment.output",
+                    [Param("outputKey", output.Key)],
+                    RulesetCapabilityBridge.FromObject(output.Value)));
             }
 
             fragments.Add(new AiExplainFragmentProjection(
                 AiExplainFragmentKinds.Note,
-                "Explain Trace",
-                "Capability metadata is available, but the active provider did not emit a live explain trace."));
+                "ruleset.explain.fragment.trace.missing",
+                [],
+                null));
         }
 
         foreach (RulesetCapabilityDiagnostic diagnostic in invocation.Diagnostics)
         {
             fragments.Add(new AiExplainFragmentProjection(
                 AiExplainFragmentKinds.Warning,
-                diagnostic.Code,
-                diagnostic.Message));
+                "ruleset.explain.fragment.diagnostic",
+                [Param("code", diagnostic.Code), Param("severity", diagnostic.Severity)],
+                RulesetCapabilityBridge.FromObject(diagnostic.Code)));
         }
 
         return fragments;
@@ -242,18 +280,27 @@ public sealed class DefaultAiExplainService : IAiExplainService
             : value.Trim();
     }
 
-    private static string FormatValue(object? value)
+    private static RulesetExplainParameter Param(string name, object? value)
     {
-        if (value is null)
+        return new RulesetExplainParameter(name, RulesetCapabilityBridge.FromObject(value));
+    }
+
+    private static IReadOnlyList<RulesetExplainParameter> BuildDefaultSummaryParameters(
+        RulesetCapabilityDescriptor descriptor,
+        AiRuntimeSummaryProjection runtimeSummary,
+        RulesetCapabilityDiagnostic? diagnostic)
+    {
+        List<RulesetExplainParameter> parameters =
+        [
+            Param("capabilityId", descriptor.CapabilityId),
+            Param("runtimeFingerprint", runtimeSummary.RuntimeFingerprint)
+        ];
+        if (diagnostic is not null)
         {
-            return "(null)";
+            parameters.Add(Param("code", diagnostic.Code));
+            parameters.Add(Param("severity", diagnostic.Severity));
         }
 
-        return value switch
-        {
-            string stringValue => stringValue,
-            IEnumerable<object?> values => string.Join(", ", values.Select(FormatValue)),
-            _ => Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty
-        };
+        return parameters;
     }
 }

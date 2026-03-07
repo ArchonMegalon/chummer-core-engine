@@ -18,24 +18,32 @@ public sealed record RulesetGasUsage(
     bool RequestBudgetExceeded = false,
     bool WallClockLimitExceeded = false);
 
-public sealed record RulesetExplainFragment(
-    string Label,
-    string? Value,
-    string? Reason = null,
-    string? PackId = null,
-    string? ProviderId = null);
+public sealed record RulesetExplainParameter(
+    string Name,
+    RulesetCapabilityValue Value);
+
+public sealed record RulesetTraceStep(
+    string ProviderId,
+    string CapabilityId,
+    string? PackId,
+    string ExplanationKey,
+    IReadOnlyList<RulesetExplainParameter> ExplanationParameters,
+    string Category,
+    decimal? Modifier = null,
+    bool? Certain = null);
 
 public sealed record RulesetProviderTrace(
     string ProviderId,
     string CapabilityId,
     string? PackId,
     bool Success,
-    IReadOnlyList<RulesetExplainFragment> ExplainFragments,
-    RulesetGasUsage GasUsage,
-    IReadOnlyList<string> Messages);
+    IReadOnlyList<RulesetTraceStep> Steps,
+    RulesetGasUsage GasUsage);
 
 public sealed record RulesetExplainTrace(
-    string SubjectId,
+    string TargetKey,
+    RulesetCapabilityValue? FinalValue,
+    string SummaryKey,
+    IReadOnlyList<RulesetExplainParameter> SummaryParameters,
     IReadOnlyList<RulesetProviderTrace> Providers,
-    IReadOnlyList<string> Messages,
     RulesetGasUsage AggregateGasUsage);

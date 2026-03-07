@@ -9,15 +9,15 @@ public static class SessionEventTypes
     public const string TrackerDecrement = "tracker.decrement";
     public const string ResourceSpend = "resource.spend";
     public const string ResourceRestore = "resource.restore";
-    public const string AmmoSpend = "ammo.spend";
-    public const string AmmoReload = "ammo.reload";
-    public const string EffectAdd = "effect.add";
-    public const string EffectRemove = "effect.remove";
+    public const string AmmoSpend = "ammo.spent";
+    public const string AmmoReload = "ammo.reloaded";
+    public const string EffectAdd = "effect.applied";
+    public const string EffectRemove = "effect.removed";
     public const string QuickActionPin = "quickaction.pin";
     public const string QuickActionUnpin = "quickaction.unpin";
-    public const string NoteAppend = "note.append";
+    public const string NoteAppend = "note.added";
     public const string NoteReplace = "note.replace";
-    public const string SelectionSet = "selection.set";
+    public const string SelectionSet = "pin.changed";
 }
 
 public static class SessionSyncStatuses

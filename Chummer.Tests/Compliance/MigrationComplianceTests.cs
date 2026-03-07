@@ -2463,6 +2463,14 @@ public class MigrationComplianceTests
         StringAssert.Contains(sessionContractsText, "public sealed record SessionLedger");
         StringAssert.Contains(sessionContractsText, "public sealed record SessionOverlaySnapshot");
         StringAssert.Contains(sessionContractsText, "public sealed record SessionRuntimeBundle");
+        StringAssert.Contains(sessionContractsText, "tracker.increment");
+        StringAssert.Contains(sessionContractsText, "tracker.decrement");
+        StringAssert.Contains(sessionContractsText, "effect.applied");
+        StringAssert.Contains(sessionContractsText, "effect.removed");
+        StringAssert.Contains(sessionContractsText, "ammo.spent");
+        StringAssert.Contains(sessionContractsText, "ammo.reloaded");
+        StringAssert.Contains(sessionContractsText, "note.added");
+        StringAssert.Contains(sessionContractsText, "pin.changed");
         StringAssert.Contains(sessionContractsText, "CharacterVersionReference BaseCharacterVersion");
         StringAssert.Contains(sessionContractsText, "IReadOnlyList<TrackerSnapshot> Trackers");
         StringAssert.Contains(sessionContractsText, "IReadOnlyList<TrackerDefinition> Trackers");
@@ -2534,13 +2542,89 @@ public class MigrationComplianceTests
         StringAssert.Contains(explainContractsText, "public sealed record RulesetGasBudget");
         StringAssert.Contains(explainContractsText, "public sealed record RulesetExecutionOptions");
         StringAssert.Contains(explainContractsText, "public sealed record RulesetGasUsage");
-        StringAssert.Contains(explainContractsText, "public sealed record RulesetExplainFragment");
+        StringAssert.Contains(explainContractsText, "public sealed record RulesetExplainParameter");
+        StringAssert.Contains(explainContractsText, "public sealed record RulesetTraceStep");
         StringAssert.Contains(explainContractsText, "public sealed record RulesetProviderTrace");
         StringAssert.Contains(explainContractsText, "public sealed record RulesetExplainTrace");
         StringAssert.Contains(explainContractsText, "ProviderInstructionLimit");
         StringAssert.Contains(explainContractsText, "WallClockLimit");
         StringAssert.Contains(rulesetContractsText, "RulesetExecutionOptions? Options = null");
         StringAssert.Contains(rulesetContractsText, "RulesetExplainTrace? Explain = null");
+    }
+
+    [TestMethod]
+    public void Ruleset_typed_capability_contracts_lock_in_schema_and_descriptor_vocabulary()
+    {
+        string typedCapabilityContractsPath = FindPath("Chummer.Contracts", "Rulesets", "RulesetTypedCapabilityContracts.cs");
+        string typedCapabilityContractsText = File.ReadAllText(typedCapabilityContractsPath);
+        string artifactContractsPath = FindPath("Chummer.Contracts", "Content", "ArtifactContracts.cs");
+        string artifactContractsText = File.ReadAllText(artifactContractsPath);
+
+        StringAssert.Contains(typedCapabilityContractsText, "public sealed record TypedCapabilityContractDescriptor");
+        StringAssert.Contains(typedCapabilityContractsText, "public static class TypedCapabilitySchemaIds");
+        StringAssert.Contains(typedCapabilityContractsText, "public static class RulesetTypedCapabilityCatalog");
+        StringAssert.Contains(typedCapabilityContractsText, "derive.attribute-limit.input.v1");
+        StringAssert.Contains(typedCapabilityContractsText, "buildlab.recommendation.output.v1");
+        StringAssert.Contains(artifactContractsText, "public const string DeriveAttributeLimit = \"derive.attribute-limit\"");
+        StringAssert.Contains(artifactContractsText, "public const string DeriveInitiative = \"derive.initiative\"");
+        StringAssert.Contains(artifactContractsText, "public const string ValidateChoice = \"validate.choice\"");
+        StringAssert.Contains(artifactContractsText, "public const string BuildLabRecommendation = \"buildlab.recommendation\"");
+    }
+
+    [TestMethod]
+    public void Session_overlay_projection_contracts_lock_in_delta_only_event_projection_vocabulary()
+    {
+        string overlayContractsPath = FindPath("Chummer.Contracts", "Session", "SessionOverlayProjectionContracts.cs");
+        string overlayContractsText = File.ReadAllText(overlayContractsPath);
+        string projectionServicePath = FindPath("Chummer.Application", "Session", "DefaultSessionOverlayProjectionService.cs");
+        string projectionServiceText = File.ReadAllText(projectionServicePath);
+
+        StringAssert.Contains(overlayContractsText, "public static class SessionOverlayEventKinds");
+        StringAssert.Contains(overlayContractsText, "public sealed record SessionOverlayEventDto");
+        StringAssert.Contains(overlayContractsText, "public sealed record SessionOverlayProjection");
+        StringAssert.Contains(projectionServiceText, "public sealed class DefaultSessionOverlayProjectionService");
+        StringAssert.Contains(projectionServiceText, "switch (item.EventType)");
+        Assert.IsFalse(projectionServiceText.Contains("CurrentEdge =", StringComparison.Ordinal));
+        Assert.IsFalse(projectionServiceText.Contains("absolute", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [TestMethod]
+    public void Build_lab_contracts_lock_in_structured_simulation_service_surface()
+    {
+        string buildLabContractsPath = FindPath("Chummer.Contracts", "BuildLab", "BuildLabContracts.cs");
+        string buildLabContractsText = File.ReadAllText(buildLabContractsPath);
+        string buildLabServicePath = FindPath("Chummer.Application", "BuildLab", "IBuildLabService.cs");
+        string buildLabServiceText = File.ReadAllText(buildLabServicePath);
+
+        StringAssert.Contains(buildLabContractsText, "public sealed record BuildVariantProjection");
+        StringAssert.Contains(buildLabContractsText, "public sealed record KarmaSpendProjection");
+        StringAssert.Contains(buildLabContractsText, "public sealed record BuildTrapChoice");
+        StringAssert.Contains(buildLabServiceText, "GenerateBuildVariants");
+        StringAssert.Contains(buildLabServiceText, "ScoreBuildVariant");
+        StringAssert.Contains(buildLabServiceText, "ProjectKarmaSpend");
+        StringAssert.Contains(buildLabServiceText, "DetectTrapChoices");
+        StringAssert.Contains(buildLabServiceText, "DetectRoleOverlap");
+        StringAssert.Contains(buildLabServiceText, "SuggestCorePackages");
+    }
+
+    [TestMethod]
+    public void Semantic_seed_contracts_lock_in_dossier_and_shadowfeed_seed_vocabulary()
+    {
+        string seedContractsPath = FindPath("Chummer.Contracts", "Seeds", "SemanticSeedContracts.cs");
+        string seedContractsText = File.ReadAllText(seedContractsPath);
+        string seedServicePath = FindPath("Chummer.Application", "Seeds", "ISemanticSeedService.cs");
+        string seedServiceText = File.ReadAllText(seedServicePath);
+
+        StringAssert.Contains(seedContractsText, "public sealed record CharacterDossierSeed");
+        StringAssert.Contains(seedContractsText, "public sealed record NpcDossierSeed");
+        StringAssert.Contains(seedContractsText, "public sealed record RunSummarySeed");
+        StringAssert.Contains(seedContractsText, "public sealed record BuildIdeaSeed");
+        StringAssert.Contains(seedContractsText, "public sealed record ShadowfeedSeed");
+        StringAssert.Contains(seedServiceText, "BuildCharacterDossierSeed");
+        StringAssert.Contains(seedServiceText, "BuildNpcDossierSeed");
+        StringAssert.Contains(seedServiceText, "BuildRunSummarySeed");
+        StringAssert.Contains(seedServiceText, "BuildBuildIdeaSeed");
+        StringAssert.Contains(seedServiceText, "BuildShadowfeedSeed");
     }
 
     [TestMethod]

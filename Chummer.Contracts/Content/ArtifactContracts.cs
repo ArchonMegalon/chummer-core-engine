@@ -80,7 +80,15 @@ public static class RulePackCapabilityIds
     public const string ContentCatalog = "content.catalog";
     public const string Localization = "localization";
     public const string DeriveStat = "derive.stat";
+    public const string DeriveAttributeLimit = "derive.attribute-limit";
+    public const string DeriveInitiative = "derive.initiative";
     public const string ValidateCharacter = "validate.character";
+    public const string ValidateChoice = "validate.choice";
+    public const string AvailabilityItem = "availability.item";
+    public const string PriceItem = "price.item";
+    public const string FilterChoices = "filter.choices";
+    public const string EffectApply = "effect.apply";
+    public const string BuildLabRecommendation = "buildlab.recommendation";
     public const string CreationProfile = "creation.profile";
     public const string SessionQuickActions = "session.quick-actions";
 }

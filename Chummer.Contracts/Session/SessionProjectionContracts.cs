@@ -1,4 +1,5 @@
 using Chummer.Contracts.Characters;
+using Chummer.Contracts.Rulesets;
 using Chummer.Contracts.Trackers;
 
 namespace Chummer.Contracts.Session;
@@ -93,12 +94,18 @@ public sealed record SessionSyncBanner(
 public sealed record SessionExplainEntry(
     string EntryId,
     string Kind,
-    string Title,
-    string Summary,
-    IReadOnlyList<string> Fragments,
+    string TitleKey,
+    IReadOnlyList<RulesetExplainParameter> TitleParameters,
+    string SummaryKey,
+    IReadOnlyList<RulesetExplainParameter> SummaryParameters,
+    IReadOnlyList<SessionExplainFragment> Fragments,
     string? ProviderId = null,
     string? PackId = null,
     int? GasUsed = null);
+
+public sealed record SessionExplainFragment(
+    string FragmentKey,
+    IReadOnlyList<RulesetExplainParameter> Parameters);
 
 public sealed record SessionDashboardProjection(
     string OverlayId,

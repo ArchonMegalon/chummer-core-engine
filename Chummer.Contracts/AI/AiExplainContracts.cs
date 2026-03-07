@@ -1,3 +1,5 @@
+using Chummer.Contracts.Rulesets;
+
 namespace Chummer.Contracts.AI;
 
 public static class AiExplainApiOperations
@@ -31,14 +33,17 @@ public sealed record AiExplainValueQuery(
 
 public sealed record AiExplainFragmentProjection(
     string Kind,
-    string Label,
-    string Value);
+    string Key,
+    IReadOnlyList<RulesetExplainParameter> Parameters,
+    RulesetCapabilityValue? Value = null);
 
 public sealed record AiExplainValueProjection(
     string ExplainEntryId,
     string Kind,
-    string Title,
-    string Summary,
+    string TitleKey,
+    IReadOnlyList<RulesetExplainParameter> TitleParameters,
+    string SummaryKey,
+    IReadOnlyList<RulesetExplainParameter> SummaryParameters,
     string RuntimeFingerprint,
     string RulesetId,
     string? CharacterId = null,
@@ -51,4 +56,4 @@ public sealed record AiExplainValueProjection(
     int? ProviderGasBudget = null,
     int? RequestGasBudget = null,
     IReadOnlyList<AiExplainFragmentProjection>? Fragments = null,
-    IReadOnlyList<string>? Diagnostics = null);
+    IReadOnlyList<RulesetCapabilityDiagnostic>? Diagnostics = null);
