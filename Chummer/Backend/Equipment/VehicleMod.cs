@@ -2166,10 +2166,10 @@ namespace Chummer.Backend.Equipment
                     return 0;
                 decimal decReturn = ProcessRatingStringAsDec(strCostExpr, () => Rating);
 
-                if (DiscountCost)
-                    decReturn *= 0.9m;
-
-                return decReturn;
+                string scriptPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Backend", "BuildLab", "Packs", "VehicleModRules.lua");
+                string luaScript = System.IO.File.ReadAllText(scriptPath);
+                var engine = new Chummer.Backend.BuildLab.LuaScriptEngine();
+                return (decimal)engine.EvaluateRule(luaScript, "CalculateOwnCost", (double)decReturn, DiscountCost);
             }
         }
 
@@ -2185,10 +2185,10 @@ namespace Chummer.Backend.Equipment
 
             decimal decReturn = (await ProcessRatingStringAsDecAsync(strCostExpr, () => GetRatingAsync(token), token).ConfigureAwait(false)).Item1;
             
-            if (DiscountCost)
-                decReturn *= 0.9m;
-
-            return decReturn;
+            string scriptPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Backend", "BuildLab", "Packs", "VehicleModRules.lua");
+            string luaScript = System.IO.File.ReadAllText(scriptPath);
+            var engine = new Chummer.Backend.BuildLab.LuaScriptEngine();
+            return (decimal)engine.EvaluateRule(luaScript, "CalculateOwnCost", (double)decReturn, DiscountCost);
         }
 
         /// <summary>
