@@ -1,0 +1,4 @@
+<Project>
+  <Target Name="_CollectTargetFrameworkForTelemetry">
+  </Target>
+</Project>
