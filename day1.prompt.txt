@@ -1,0 +1,6 @@
+System Initialization. Review your `.agent-memory.md` and the `chummer-core-engine.design.v2.md` document in the root.
+Your Day 1 Objective is Milestone E-1: Isolation and Compile Recovery.
+1. Delete the following top-level directories immediately: `Chummer.Api`, `Chummer.Avalonia`, `Chummer.Avalonia.Browser`, `Chummer.Blazor`, `Chummer.Blazor.Desktop`, `Chummer.Portal`, `Chummer.Presentation`, `Chummer.Web`, `ChummerHub`, and `Docker`.
+2. Create a new `Chummer.CoreEngine.sln` solution file.
+3. Add the remaining core mechanics, ruleset, and contract projects to this solution.
+4. Resolve any broken references caused by the deletion of the UI/API layers by mocking them or creating empty stub interfaces in the contracts layer. Do not stop until `dotnet build Chummer.CoreEngine.sln` returns a green build.

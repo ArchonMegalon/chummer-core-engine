@@ -526,12 +526,15 @@ public class MigrationComplianceTests
         StringAssert.Contains(runtimeFingerprintServiceContractText, "public interface IRuntimeFingerprintService");
         StringAssert.Contains(runtimeFingerprintServiceText, "public sealed class DefaultRuntimeFingerprintService : IRuntimeFingerprintService");
         StringAssert.Contains(runtimeFingerprintServiceText, "ComputeResolvedRuntimeFingerprint");
+        StringAssert.Contains(runtimeFingerprintServiceText, "RulesetTypedCapabilityCatalog");
+        StringAssert.Contains(runtimeFingerprintServiceText, "fingerprintSource.Append(\"abi=\")");
         StringAssert.Contains(defaultRuleProfileRegistryServiceText, "public sealed class DefaultRuleProfileRegistryService : IRuleProfileRegistryService");
         StringAssert.Contains(defaultRuleProfileRegistryServiceText, "IRulePackRegistryService");
         StringAssert.Contains(defaultRuleProfileRegistryServiceText, "IRuleProfileManifestStore");
         StringAssert.Contains(defaultRuleProfileRegistryServiceText, "IRuleProfileInstallStateStore");
         StringAssert.Contains(defaultRuleProfileRegistryServiceText, "IRuleProfilePublicationStore");
         StringAssert.Contains(defaultRuleProfileRegistryServiceText, "IRuntimeFingerprintService");
+        StringAssert.Contains(defaultRuleProfileRegistryServiceText, "capabilityAbiVersions");
         StringAssert.Contains(defaultRuleProfileRegistryServiceText, "ComputeResolvedRuntimeFingerprint(");
         Assert.IsFalse(defaultRuleProfileRegistryServiceText.Contains("ComputeRuntimeFingerprint(", StringComparison.Ordinal));
         StringAssert.Contains(defaultRuleProfileRegistryServiceText, "official.");
@@ -612,6 +615,10 @@ public class MigrationComplianceTests
         StringAssert.Contains(defaultRuntimeInspectorServiceText, "IRuleProfileRegistryService");
         StringAssert.Contains(defaultRuntimeInspectorServiceText, "IRulePackRegistryService");
         StringAssert.Contains(defaultRuntimeInspectorServiceText, "profile.Install");
+        StringAssert.Contains(defaultRuntimeInspectorServiceText, "MessageKey:");
+        StringAssert.Contains(defaultRuntimeInspectorServiceText, "MessageParameters:");
+        StringAssert.Contains(defaultRuntimeInspectorServiceText, "SummaryKey:");
+        StringAssert.Contains(defaultRuntimeInspectorServiceText, "SummaryParameters:");
         StringAssert.Contains(serviceRegistrationText, "AddSingleton<IRuntimeInspectorService, DefaultRuntimeInspectorService>()");
         StringAssert.Contains(readmeText, "/api/runtime/profiles/{profileId}");
     }
@@ -1855,6 +1862,8 @@ public class MigrationComplianceTests
         StringAssert.Contains(rulePackCompilerContractsText, "public sealed record RulePackResolutionDiagnostic");
         StringAssert.Contains(rulePackCompilerContractsText, "public sealed record RulePackResolutionResult");
         StringAssert.Contains(rulePackCompilerContractsText, "public sealed record RulePackCompileReceipt");
+        StringAssert.Contains(rulePackCompilerContractsText, "string? MessageKey = null");
+        StringAssert.Contains(rulePackCompilerContractsText, "IReadOnlyList<RulesetExplainParameter>? MessageParameters = null");
         StringAssert.Contains(rulePackCompilerContractsText, "MissingDependency");
         StringAssert.Contains(rulePackCompilerContractsText, "TrustTierViolation");
         StringAssert.Contains(rulePackCompilerContractsText, "CapabilityBlocked");
@@ -1917,6 +1926,8 @@ public class MigrationComplianceTests
         StringAssert.Contains(buildKitApplicationContractsText, "public sealed record BuildKitAppliedAction");
         StringAssert.Contains(buildKitApplicationContractsText, "public sealed record BuildKitValidationReceipt");
         StringAssert.Contains(buildKitApplicationContractsText, "public sealed record BuildKitApplicationReceipt");
+        StringAssert.Contains(buildKitApplicationContractsText, "string? MessageKey = null");
+        StringAssert.Contains(buildKitApplicationContractsText, "IReadOnlyList<RulesetExplainParameter>? MessageParameters = null");
         StringAssert.Contains(buildKitApplicationContractsText, "RuntimeFingerprintMismatch");
         StringAssert.Contains(buildKitApplicationContractsText, "PromptRequired");
         StringAssert.Contains(buildKitApplicationContractsText, "PartiallyApplied");
@@ -2222,6 +2233,10 @@ public class MigrationComplianceTests
         StringAssert.Contains(runtimeLockRegistryContractsText, "ResolvedRuntimeLock RuntimeLock");
         StringAssert.Contains(runtimeLockRegistryContractsText, "OwnerScope Owner");
         StringAssert.Contains(runtimeLockRegistryContractsText, "ArtifactInstallState Install");
+        StringAssert.Contains(runtimeLockRegistryContractsText, "string? MessageKey = null");
+        StringAssert.Contains(runtimeLockRegistryContractsText, "IReadOnlyList<RulesetExplainParameter>? MessageParameters = null");
+        StringAssert.Contains(runtimeLockRegistryContractsText, "string? SummaryKey = null");
+        StringAssert.Contains(runtimeLockRegistryContractsText, "IReadOnlyList<RulesetExplainParameter>? SummaryParameters = null");
         Assert.IsFalse(runtimeLockRegistryContractsText.Contains("HttpContext", StringComparison.Ordinal));
         Assert.IsFalse(runtimeLockRegistryContractsText.Contains("ClaimsPrincipal", StringComparison.Ordinal));
     }
@@ -2320,8 +2335,33 @@ public class MigrationComplianceTests
         StringAssert.Contains(runtimeInspectorContractsText, "IReadOnlyList<RuntimeInspectorCapabilityDescriptorProjection>? CapabilityDescriptors = null");
         StringAssert.Contains(runtimeInspectorContractsText, "string SourceKind = RegistryEntrySourceKinds.PersistedManifest");
         StringAssert.Contains(runtimeInspectorContractsText, "string ProfileSourceKind = RegistryEntrySourceKinds.PersistedManifest");
+        StringAssert.Contains(runtimeInspectorContractsText, "string? MessageKey = null");
+        StringAssert.Contains(runtimeInspectorContractsText, "IReadOnlyList<RulesetExplainParameter>? MessageParameters = null");
+        StringAssert.Contains(runtimeInspectorContractsText, "string? SummaryKey = null");
+        StringAssert.Contains(runtimeInspectorContractsText, "IReadOnlyList<RulesetExplainParameter>? SummaryParameters = null");
         Assert.IsFalse(runtimeInspectorContractsText.Contains("Avalonia", StringComparison.Ordinal));
         Assert.IsFalse(runtimeInspectorContractsText.Contains("Blazor", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void Runtime_lock_diff_contracts_lock_in_before_after_change_vocabulary()
+    {
+        string runtimeLockDiffContractsPath = FindPath("Chummer.Contracts", "Content", "RuntimeLockDiffContracts.cs");
+        string runtimeLockDiffContractsText = File.ReadAllText(runtimeLockDiffContractsPath);
+        string runtimeLockDiffServiceContractPath = FindPath("Chummer.Application", "Content", "IRuntimeLockDiffService.cs");
+        string runtimeLockDiffServiceContractText = File.ReadAllText(runtimeLockDiffServiceContractPath);
+        string runtimeLockDiffServicePath = FindPath("Chummer.Application", "Content", "DefaultRuntimeLockDiffService.cs");
+        string runtimeLockDiffServiceText = File.ReadAllText(runtimeLockDiffServicePath);
+
+        StringAssert.Contains(runtimeLockDiffContractsText, "public static class RuntimeLockDiffChangeKinds");
+        StringAssert.Contains(runtimeLockDiffContractsText, "public sealed record RuntimeLockDiffChange");
+        StringAssert.Contains(runtimeLockDiffContractsText, "public sealed record RuntimeLockDiffProjection");
+        StringAssert.Contains(runtimeLockDiffContractsText, "provider-binding-changed");
+        StringAssert.Contains(runtimeLockDiffServiceContractText, "public interface IRuntimeLockDiffService");
+        StringAssert.Contains(runtimeLockDiffServiceContractText, "RuntimeLockDiffProjection Diff");
+        StringAssert.Contains(runtimeLockDiffServiceText, "public sealed class DefaultRuntimeLockDiffService");
+        StringAssert.Contains(runtimeLockDiffServiceText, "runtime.diff.rulepack.added");
+        StringAssert.Contains(runtimeLockDiffServiceText, "runtime.diff.provider-binding.changed");
     }
 
     [TestMethod]
@@ -2538,6 +2578,8 @@ public class MigrationComplianceTests
         string explainContractsText = File.ReadAllText(explainContractsPath);
         string rulesetContractsPath = FindPath("Chummer.Contracts", "Rulesets", "RulesetContracts.cs");
         string rulesetContractsText = File.ReadAllText(rulesetContractsPath);
+        string rulesetCapabilityContractsPath = FindPath("Chummer.Contracts", "Rulesets", "RulesetCapabilityContracts.cs");
+        string rulesetCapabilityContractsText = File.ReadAllText(rulesetCapabilityContractsPath);
 
         StringAssert.Contains(explainContractsText, "public sealed record RulesetGasBudget");
         StringAssert.Contains(explainContractsText, "public sealed record RulesetExecutionOptions");
@@ -2550,6 +2592,9 @@ public class MigrationComplianceTests
         StringAssert.Contains(explainContractsText, "WallClockLimit");
         StringAssert.Contains(rulesetContractsText, "RulesetExecutionOptions? Options = null");
         StringAssert.Contains(rulesetContractsText, "RulesetExplainTrace? Explain = null");
+        StringAssert.Contains(rulesetCapabilityContractsText, "public sealed record RulesetCapabilityDiagnostic");
+        StringAssert.Contains(rulesetCapabilityContractsText, "string? MessageKey = null");
+        StringAssert.Contains(rulesetCapabilityContractsText, "IReadOnlyList<RulesetExplainParameter>? MessageParameters = null");
     }
 
     [TestMethod]
@@ -2584,8 +2629,10 @@ public class MigrationComplianceTests
         StringAssert.Contains(overlayContractsText, "public sealed record SessionOverlayProjection");
         StringAssert.Contains(projectionServiceText, "public sealed class DefaultSessionOverlayProjectionService");
         StringAssert.Contains(projectionServiceText, "switch (item.EventType)");
+        StringAssert.Contains(projectionServiceText, "SessionOverlayEventValidator.AllowsEvent");
+        StringAssert.Contains(projectionServiceText, "session.replay.absolute-write-blocked");
         Assert.IsFalse(projectionServiceText.Contains("CurrentEdge =", StringComparison.Ordinal));
-        Assert.IsFalse(projectionServiceText.Contains("absolute", StringComparison.OrdinalIgnoreCase));
+        Assert.IsFalse(projectionServiceText.Contains("currentEdge =", StringComparison.OrdinalIgnoreCase));
     }
 
     [TestMethod]
@@ -2614,6 +2661,10 @@ public class MigrationComplianceTests
         string seedContractsText = File.ReadAllText(seedContractsPath);
         string seedServicePath = FindPath("Chummer.Application", "Seeds", "ISemanticSeedService.cs");
         string seedServiceText = File.ReadAllText(seedServicePath);
+        string aestheticDigestServicePath = FindPath("Chummer.Application", "Seeds", "IAestheticDigestService.cs");
+        string aestheticDigestServiceText = File.ReadAllText(aestheticDigestServicePath);
+        string defaultAestheticDigestServicePath = FindPath("Chummer.Application", "Seeds", "DefaultAestheticDigestService.cs");
+        string defaultAestheticDigestServiceText = File.ReadAllText(defaultAestheticDigestServicePath);
 
         StringAssert.Contains(seedContractsText, "public sealed record CharacterDossierSeed");
         StringAssert.Contains(seedContractsText, "public sealed record NpcDossierSeed");
@@ -2625,6 +2676,37 @@ public class MigrationComplianceTests
         StringAssert.Contains(seedServiceText, "BuildRunSummarySeed");
         StringAssert.Contains(seedServiceText, "BuildBuildIdeaSeed");
         StringAssert.Contains(seedServiceText, "BuildShadowfeedSeed");
+        StringAssert.Contains(aestheticDigestServiceText, "public interface IAestheticDigestService");
+        StringAssert.Contains(defaultAestheticDigestServiceText, "public sealed class DefaultAestheticDigestService");
+        StringAssert.Contains(defaultAestheticDigestServiceText, "CharacterAestheticDigest");
+    }
+
+    [TestMethod]
+    public void Relationship_and_heat_simulation_contracts_lock_in_computation_primitives()
+    {
+        string simulationContractsPath = FindPath("Chummer.Contracts", "Simulation", "RelationshipHeatContracts.cs");
+        string simulationContractsText = File.ReadAllText(simulationContractsPath);
+        string simulationServiceContractPath = FindPath("Chummer.Application", "Simulation", "IRelationshipHeatService.cs");
+        string simulationServiceContractText = File.ReadAllText(simulationServiceContractPath);
+        string simulationServicePath = FindPath("Chummer.Application", "Simulation", "DefaultRelationshipHeatService.cs");
+        string simulationServiceText = File.ReadAllText(simulationServicePath);
+
+        StringAssert.Contains(simulationContractsText, "public sealed record HeatComputationInput");
+        StringAssert.Contains(simulationContractsText, "public sealed record PublicAwarenessComputationInput");
+        StringAssert.Contains(simulationContractsText, "public sealed record FavorDebtComputationInput");
+        StringAssert.Contains(simulationContractsText, "public sealed record DowntimeProgressionInput");
+        StringAssert.Contains(simulationContractsText, "public sealed record AddictionScheduleInput");
+        StringAssert.Contains(simulationContractsText, "public sealed record HealingScheduleInput");
+        StringAssert.Contains(simulationContractsText, "public sealed record FactionResponseSeed");
+        StringAssert.Contains(simulationServiceContractText, "ComputeHeat");
+        StringAssert.Contains(simulationServiceContractText, "ComputePublicAwareness");
+        StringAssert.Contains(simulationServiceContractText, "ComputeFavorDebt");
+        StringAssert.Contains(simulationServiceContractText, "ComputeDowntimeProgression");
+        StringAssert.Contains(simulationServiceContractText, "ComputeAddictionSchedule");
+        StringAssert.Contains(simulationServiceContractText, "ComputeHealingSchedule");
+        StringAssert.Contains(simulationServiceContractText, "ComputeFactionResponseSeed");
+        StringAssert.Contains(simulationServiceText, "heat.low");
+        StringAssert.Contains(simulationServiceText, "faction.response.extreme");
     }
 
     [TestMethod]
@@ -5032,6 +5114,8 @@ public class MigrationComplianceTests
         string aiMediaQueueContractsText = File.ReadAllText(aiMediaQueueContractsPath);
         string aiBuildIdeaCatalogContractsPath = FindPath("Chummer.Contracts", "AI", "AiBuildIdeaCatalogContracts.cs");
         string aiBuildIdeaCatalogContractsText = File.ReadAllText(aiBuildIdeaCatalogContractsPath);
+        string buildIdeaCardContractsPath = FindPath("Chummer.Contracts", "AI", "BuildIdeaCardContracts.cs");
+        string buildIdeaCardContractsText = File.ReadAllText(buildIdeaCardContractsPath);
         string aiExplainContractsPath = FindPath("Chummer.Contracts", "AI", "AiExplainContracts.cs");
         string aiExplainContractsText = File.ReadAllText(aiExplainContractsPath);
         string aiPortraitPromptContractsPath = FindPath("Chummer.Contracts", "AI", "AiPortraitPromptContracts.cs");
@@ -5345,6 +5429,9 @@ public class MigrationComplianceTests
         StringAssert.Contains(aiMediaQueueContractsText, "AiMediaQueueStates");
         StringAssert.Contains(aiBuildIdeaCatalogContractsText, "AiBuildIdeaCatalogQuery");
         StringAssert.Contains(aiBuildIdeaCatalogContractsText, "AiBuildIdeaCatalog");
+        StringAssert.Contains(buildIdeaCardContractsText, "public sealed record BuildIdeaCard");
+        StringAssert.Contains(buildIdeaCardContractsText, "string? TitleKey = null");
+        StringAssert.Contains(buildIdeaCardContractsText, "IReadOnlyList<RulesetExplainParameter>? SummaryParameters = null");
         StringAssert.Contains(aiExplainContractsText, "AiExplainApiOperations");
         StringAssert.Contains(aiExplainContractsText, "AiExplainValueQuery");
         StringAssert.Contains(aiExplainContractsText, "AiExplainValueProjection");

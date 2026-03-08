@@ -156,7 +156,9 @@ public sealed class DefaultRuntimeInspectorService : IRuntimeInspectorService
                 Kind: RuntimeInspectorWarningKinds.Trust,
                 Severity: RuntimeInspectorWarningSeverityLevels.Info,
                 Message: "Profile is local-only and should be republished before public distribution.",
-                SubjectId: profile.Manifest.ProfileId));
+                SubjectId: profile.Manifest.ProfileId,
+                MessageKey: "runtime.inspector.warning.trust.local-only",
+                MessageParameters: [Param("profileId", profile.Manifest.ProfileId)]));
         }
 
         if (compatibilityDiagnostics.Any(diagnostic => string.Equals(diagnostic.State, RuntimeLockCompatibilityStates.MissingPack, StringComparison.Ordinal)))
@@ -165,7 +167,9 @@ public sealed class DefaultRuntimeInspectorService : IRuntimeInspectorService
                 Kind: RuntimeInspectorWarningKinds.Compatibility,
                 Severity: RuntimeInspectorWarningSeverityLevels.Warning,
                 Message: "One or more RulePacks referenced by the profile are missing from the current catalog.",
-                SubjectId: profile.Manifest.ProfileId));
+                SubjectId: profile.Manifest.ProfileId,
+                MessageKey: "runtime.inspector.warning.compatibility.missing-pack",
+                MessageParameters: [Param("profileId", profile.Manifest.ProfileId)]));
         }
 
         if (resolvedRulePacks.Count == 0)
@@ -174,7 +178,9 @@ public sealed class DefaultRuntimeInspectorService : IRuntimeInspectorService
                 Kind: RuntimeInspectorWarningKinds.ProviderBinding,
                 Severity: RuntimeInspectorWarningSeverityLevels.Info,
                 Message: "Runtime resolves to built-in base content without additional RulePacks.",
-                SubjectId: profile.Manifest.ProfileId));
+                SubjectId: profile.Manifest.ProfileId,
+                MessageKey: "runtime.inspector.warning.provider-binding.none",
+                MessageParameters: [Param("profileId", profile.Manifest.ProfileId)]));
         }
 
         return warnings.ToArray();
@@ -190,7 +196,13 @@ public sealed class DefaultRuntimeInspectorService : IRuntimeInspectorService
                 Summary: $"Profile applies RulePack '{rulePack.RulePack.Id}@{rulePack.RulePack.Version}'.",
                 SubjectId: rulePack.RulePack.Id,
                 AfterValue: rulePack.RulePack.Version,
-                RequiresRebind: false))
+                RequiresRebind: false,
+                SummaryKey: "runtime.inspector.preview.rulepack-added",
+                SummaryParameters:
+                [
+                    Param("packId", rulePack.RulePack.Id),
+                    Param("version", rulePack.RulePack.Version)
+                ]))
             .ToList();
 
         if (preview.Count == 0)
@@ -200,7 +212,13 @@ public sealed class DefaultRuntimeInspectorService : IRuntimeInspectorService
                 Summary: $"Profile '{profile.Manifest.ProfileId}' pins the built-in runtime fingerprint '{profile.Manifest.RuntimeLock.RuntimeFingerprint}'.",
                 SubjectId: profile.Manifest.RuntimeLock.RuntimeFingerprint,
                 AfterValue: profile.Manifest.RuntimeLock.RuntimeFingerprint,
-                RequiresRebind: false));
+                RequiresRebind: false,
+                SummaryKey: "runtime.inspector.preview.runtime-pinned",
+                SummaryParameters:
+                [
+                    Param("profileId", profile.Manifest.ProfileId),
+                    Param("runtimeFingerprint", profile.Manifest.RuntimeLock.RuntimeFingerprint)
+                ]));
         }
 
         return preview.ToArray();
@@ -225,4 +243,7 @@ public sealed class DefaultRuntimeInspectorService : IRuntimeInspectorService
             ? install with { RuntimeFingerprint = runtimeFingerprint }
             : install;
     }
+
+    private static RulesetExplainParameter Param(string name, object? value)
+        => new(name, RulesetCapabilityBridge.FromObject(value));
 }

@@ -273,12 +273,18 @@ public sealed class DefaultRuleProfileRegistryService : IRuleProfileRegistryServ
                 group => group.Key,
                 group => group.Last().ProviderId,
                 StringComparer.Ordinal);
+        Dictionary<string, string> capabilityAbiVersions = RulesetTypedCapabilityCatalog.Descriptors
+            .ToDictionary(
+                static descriptor => descriptor.CapabilityId,
+                static descriptor => $"{descriptor.InputSchemaId}|{descriptor.OutputSchemaId}",
+                StringComparer.Ordinal);
         string runtimeFingerprint = _runtimeFingerprintService.ComputeResolvedRuntimeFingerprint(
             rulesetId,
             [bundle],
             rulePacks,
             providerBindings,
-            EngineApiVersion);
+            EngineApiVersion,
+            capabilityAbiVersions);
 
         return new ResolvedRuntimeLock(
             RulesetId: rulesetId,

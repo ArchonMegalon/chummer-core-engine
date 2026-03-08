@@ -1,4 +1,5 @@
 using Chummer.Contracts.Characters;
+using Chummer.Contracts.Rulesets;
 
 namespace Chummer.Contracts.Content;
 
@@ -36,7 +37,9 @@ public sealed record BuildKitValidationIssue(
     string Kind,
     string Message,
     string? PromptId = null,
-    string? ActionId = null);
+    string? ActionId = null,
+    string? MessageKey = null,
+    IReadOnlyList<RulesetExplainParameter>? MessageParameters = null);
 
 public sealed record BuildKitAppliedAction(
     string ActionId,

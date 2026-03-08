@@ -19,6 +19,11 @@ public sealed class DefaultSessionOverlayProjectionService : ISessionOverlayProj
 
         foreach (SessionOverlayEventDto item in events.OrderBy(static candidate => candidate.Sequence))
         {
+            if (!SessionOverlayEventValidator.AllowsEvent(item, diagnostics))
+            {
+                continue;
+            }
+
             switch (item.EventType)
             {
                 case SessionOverlayEventKinds.TrackerIncrement:

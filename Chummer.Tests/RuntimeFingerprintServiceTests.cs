@@ -104,6 +104,52 @@ public class RuntimeFingerprintServiceTests
         Assert.AreEqual(fingerprintA, fingerprintB);
     }
 
+    [TestMethod]
+    public void Runtime_fingerprint_service_tracks_capability_abi_versions()
+    {
+        DefaultRuntimeFingerprintService service = new();
+        ContentBundleDescriptor[] bundles =
+        [
+            new(
+                BundleId: "official.sr5.base",
+                RulesetId: RulesetDefaults.Sr5,
+                Version: "schema-5",
+                Title: "SR5 Base",
+                Description: "Built-in base content.",
+                AssetPaths: ["data/", "lang/"])
+        ];
+
+        Dictionary<string, string> providerBindings = new(StringComparer.Ordinal)
+        {
+            [RulePackCapabilityIds.ValidateCharacter] = "house-rules/validate.character"
+        };
+        Dictionary<string, string> abiA = new(StringComparer.Ordinal)
+        {
+            [RulePackCapabilityIds.ValidateCharacter] = "validate.character.input.v1|validate.character.output.v1"
+        };
+        Dictionary<string, string> abiB = new(StringComparer.Ordinal)
+        {
+            [RulePackCapabilityIds.ValidateCharacter] = "validate.character.input.v2|validate.character.output.v1"
+        };
+
+        string fingerprintA = service.ComputeResolvedRuntimeFingerprint(
+            RulesetDefaults.Sr5,
+            bundles,
+            [CreateRulePack("house-rules", "1.0.0", "sha256:abc")],
+            providerBindings,
+            "rulepack-v1",
+            abiA);
+        string fingerprintB = service.ComputeResolvedRuntimeFingerprint(
+            RulesetDefaults.Sr5,
+            bundles,
+            [CreateRulePack("house-rules", "1.0.0", "sha256:abc")],
+            providerBindings,
+            "rulepack-v1",
+            abiB);
+
+        Assert.AreNotEqual(fingerprintA, fingerprintB);
+    }
+
     private static RulePackRegistryEntry CreateRulePack(string packId, string version, string checksum)
     {
         return new RulePackRegistryEntry(

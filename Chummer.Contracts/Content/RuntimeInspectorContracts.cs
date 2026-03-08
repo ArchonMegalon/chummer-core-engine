@@ -68,7 +68,9 @@ public sealed record RuntimeInspectorWarning(
     string Severity,
     string Message,
     string? SubjectId = null,
-    string? ExplainEntryId = null);
+    string? ExplainEntryId = null,
+    string? MessageKey = null,
+    IReadOnlyList<RulesetExplainParameter>? MessageParameters = null);
 
 public sealed record RuntimeMigrationPreviewItem(
     string Kind,
@@ -76,7 +78,9 @@ public sealed record RuntimeMigrationPreviewItem(
     string? SubjectId = null,
     string? BeforeValue = null,
     string? AfterValue = null,
-    bool RequiresRebind = false);
+    bool RequiresRebind = false,
+    string? SummaryKey = null,
+    IReadOnlyList<RulesetExplainParameter>? SummaryParameters = null);
 
 public sealed record ActiveRuntimeStatusProjection(
     string ProfileId,

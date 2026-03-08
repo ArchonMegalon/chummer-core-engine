@@ -1,4 +1,5 @@
 using Chummer.Contracts.Owners;
+using Chummer.Contracts.Rulesets;
 
 namespace Chummer.Contracts.Content;
 
@@ -40,7 +41,9 @@ public sealed record RuntimeLockCompatibilityDiagnostic(
     string State,
     string Message,
     string? RequiredRulesetId = null,
-    string? RequiredRuntimeFingerprint = null);
+    string? RequiredRuntimeFingerprint = null,
+    string? MessageKey = null,
+    IReadOnlyList<RulesetExplainParameter>? MessageParameters = null);
 
 public sealed record RuntimeLockInstallCandidate(
     string TargetKind,
@@ -69,7 +72,9 @@ public sealed record RuntimeLockInstallPreviewItem(
     string Kind,
     string Summary,
     string SubjectId,
-    bool RequiresConfirmation = false);
+    bool RequiresConfirmation = false,
+    string? SummaryKey = null,
+    IReadOnlyList<RulesetExplainParameter>? SummaryParameters = null);
 
 public sealed record RuntimeLockInstallPreviewReceipt(
     string LockId,

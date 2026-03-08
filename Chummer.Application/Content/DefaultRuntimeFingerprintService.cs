@@ -12,7 +12,8 @@ public sealed class DefaultRuntimeFingerprintService : IRuntimeFingerprintServic
         IReadOnlyList<ContentBundleDescriptor> contentBundles,
         IReadOnlyList<RulePackRegistryEntry> rulePacks,
         IReadOnlyDictionary<string, string> providerBindings,
-        string engineApiVersion)
+        string engineApiVersion,
+        IReadOnlyDictionary<string, string>? capabilityAbiVersions = null)
     {
         string normalizedRulesetId = RulesetDefaults.NormalizeRequired(rulesetId);
         ArgumentNullException.ThrowIfNull(contentBundles);
@@ -80,6 +81,23 @@ public sealed class DefaultRuntimeFingerprintService : IRuntimeFingerprintServic
                 .Append(binding.Key)
                 .Append('|')
                 .Append(binding.Value)
+                .Append('\n');
+        }
+
+        IReadOnlyDictionary<string, string> abiVersions = capabilityAbiVersions
+            ?? RulesetTypedCapabilityCatalog.Descriptors.ToDictionary(
+                static descriptor => descriptor.CapabilityId,
+                static descriptor => $"{descriptor.InputSchemaId}|{descriptor.OutputSchemaId}",
+                StringComparer.Ordinal);
+
+        foreach (KeyValuePair<string, string> abiVersion in abiVersions
+                     .OrderBy(candidate => candidate.Key, StringComparer.Ordinal)
+                     .ThenBy(candidate => candidate.Value, StringComparer.Ordinal))
+        {
+            fingerprintSource.Append("abi=")
+                .Append(abiVersion.Key)
+                .Append('|')
+                .Append(abiVersion.Value)
                 .Append('\n');
         }
 

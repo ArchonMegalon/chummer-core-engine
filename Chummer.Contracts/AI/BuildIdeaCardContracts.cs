@@ -1,3 +1,5 @@
+using Chummer.Contracts.Rulesets;
+
 namespace Chummer.Contracts.AI;
 
 public sealed record BuildIdeaCard(
@@ -15,4 +17,10 @@ public sealed record BuildIdeaCard(
     IReadOnlyList<string> TrapChoices,
     IReadOnlyList<string> LinkedContentIds,
     double CommunityScore = 0,
-    string Provenance = "build-idea-card");
+    string Provenance = "build-idea-card",
+    string? TitleKey = null,
+    IReadOnlyList<RulesetExplainParameter>? TitleParameters = null,
+    string? SummaryKey = null,
+    IReadOnlyList<RulesetExplainParameter>? SummaryParameters = null,
+    string? CoreLoopKey = null,
+    IReadOnlyList<RulesetExplainParameter>? CoreLoopParameters = null);

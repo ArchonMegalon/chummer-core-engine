@@ -45,7 +45,9 @@ public sealed record RulesetCapabilityValue(
 public sealed record RulesetCapabilityDiagnostic(
     string Code,
     string Message,
-    string Severity = RulesetCapabilityDiagnosticSeverities.Info);
+    string Severity = RulesetCapabilityDiagnosticSeverities.Info,
+    string? MessageKey = null,
+    IReadOnlyList<RulesetExplainParameter>? MessageParameters = null);
 
 public sealed record RulesetCapabilityInvocationRequest(
     string CapabilityId,

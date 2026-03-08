@@ -9,5 +9,6 @@ public interface IRuntimeFingerprintService
         IReadOnlyList<ContentBundleDescriptor> contentBundles,
         IReadOnlyList<RulePackRegistryEntry> rulePacks,
         IReadOnlyDictionary<string, string> providerBindings,
-        string engineApiVersion);
+        string engineApiVersion,
+        IReadOnlyDictionary<string, string>? capabilityAbiVersions = null);
 }

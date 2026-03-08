@@ -1,3 +1,5 @@
+using Chummer.Contracts.Rulesets;
+
 namespace Chummer.Contracts.Content;
 
 public static class RulePackResolutionDiagnosticKinds
@@ -40,7 +42,9 @@ public sealed record RulePackResolutionDiagnostic(
     string SubjectId,
     string Message,
     string? RelatedPackId = null,
-    string? RelatedDependencyId = null);
+    string? RelatedDependencyId = null,
+    string? MessageKey = null,
+    IReadOnlyList<RulesetExplainParameter>? MessageParameters = null);
 
 public sealed record RulePackResolutionResult(
     string RulesetId,

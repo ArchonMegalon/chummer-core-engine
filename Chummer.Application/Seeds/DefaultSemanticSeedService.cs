@@ -4,20 +4,16 @@ namespace Chummer.Application.Seeds;
 
 public sealed class DefaultSemanticSeedService : ISemanticSeedService
 {
+    private readonly IAestheticDigestService _aestheticDigestService;
+
+    public DefaultSemanticSeedService(IAestheticDigestService aestheticDigestService)
+    {
+        _aestheticDigestService = aestheticDigestService;
+    }
+
     public CharacterDossierSeed BuildCharacterDossierSeed(string characterId, string rulesetId, string runtimeFingerprint)
     {
-        CharacterAestheticDigest digest = new(
-            CharacterId: characterId,
-            Metatype: "unknown",
-            RoleTags: ["generalist"],
-            BuildTags: ["balanced"],
-            VisibleWareTags: [],
-            MagicalStyleTags: [],
-            OutfitArchetypeTags: ["street"],
-            FactionStyleTags: [],
-            MoodTags: ["focused"],
-            TraumaTags: [],
-            MotifTags: ["neon"]);
+        CharacterAestheticDigest digest = _aestheticDigestService.BuildDigest(characterId, rulesetId);
 
         return new CharacterDossierSeed(
             CharacterId: characterId,

@@ -1,0 +1,18 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+/usr/lib/dotnet/sdk/10.0.103/Microsoft.Common.CurrentVersion.targets(2437,5): warning MSB3243: No way to resolve conflict between "System.Configuration, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" and "System.Configuration". Choosing "System.Configuration, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" arbitrarily. [/docker/chummercomplete/chummer-core-engine/Chummer/Chummer.csproj]
+/usr/lib/dotnet/sdk/10.0.103/Microsoft.Common.CurrentVersion.targets(2437,5): warning MSB3243: No way to resolve conflict between "System.IO.Compression, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" and "System.IO.Compression". Choosing "System.IO.Compression, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" arbitrarily. [/docker/chummercomplete/chummer-core-engine/Chummer/Chummer.csproj]
+/usr/lib/dotnet/sdk/10.0.103/Microsoft.Common.CurrentVersion.targets(2437,5): warning MSB3243: No way to resolve conflict between "System.Net, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" and "System.Net". Choosing "System.Net, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" arbitrarily. [/docker/chummercomplete/chummer-core-engine/Chummer/Chummer.csproj]
+/usr/lib/dotnet/sdk/10.0.103/Microsoft.Common.CurrentVersion.targets(2437,5): warning MSB3243: No way to resolve conflict between "System.Transactions, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" and "System.Transactions". Choosing "System.Transactions, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" arbitrarily. [/docker/chummercomplete/chummer-core-engine/Chummer/Chummer.csproj]
+  Chummer -> /docker/chummercomplete/chummer-core-engine/Chummer/bin/Debug/Chummer5.dll
+
+Build succeeded.
+
+/usr/lib/dotnet/sdk/10.0.103/Microsoft.Common.CurrentVersion.targets(2437,5): warning MSB3243: No way to resolve conflict between "System.Configuration, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" and "System.Configuration". Choosing "System.Configuration, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" arbitrarily. [/docker/chummercomplete/chummer-core-engine/Chummer/Chummer.csproj]
+/usr/lib/dotnet/sdk/10.0.103/Microsoft.Common.CurrentVersion.targets(2437,5): warning MSB3243: No way to resolve conflict between "System.IO.Compression, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" and "System.IO.Compression". Choosing "System.IO.Compression, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" arbitrarily. [/docker/chummercomplete/chummer-core-engine/Chummer/Chummer.csproj]
+/usr/lib/dotnet/sdk/10.0.103/Microsoft.Common.CurrentVersion.targets(2437,5): warning MSB3243: No way to resolve conflict between "System.Net, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" and "System.Net". Choosing "System.Net, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" arbitrarily. [/docker/chummercomplete/chummer-core-engine/Chummer/Chummer.csproj]
+/usr/lib/dotnet/sdk/10.0.103/Microsoft.Common.CurrentVersion.targets(2437,5): warning MSB3243: No way to resolve conflict between "System.Transactions, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" and "System.Transactions". Choosing "System.Transactions, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" arbitrarily. [/docker/chummercomplete/chummer-core-engine/Chummer/Chummer.csproj]
+    4 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:04.77

@@ -70,6 +70,10 @@ Purpose: queue actionable items and run them in order without losing momentum.
 | WL-057 | done | P1 | Milestone A3: delta-only session replay service + replay tests. | agent | Added `SessionOverlayEventDto` contract and deterministic replay projector seam (`DefaultSessionOverlayProjectionService`) using event deltas only. |
 | WL-058 | done | P1 | Milestone A4: Build Lab structured simulation DTOs/services. | agent | Added Build Lab contracts and deterministic service seam with `GenerateBuildVariants`, `ScoreBuildVariant`, `ProjectKarmaSpend`, `DetectTrapChoices`, `DetectRoleOverlap`, `SuggestCorePackages`. |
 | WL-059 | done | P1 | Milestone A5: aesthetic digest and dossier seed contracts/services. | agent | Added semantic seed contracts and default service seam for `CharacterDossierSeed`, `NpcDossierSeed`, `RunSummarySeed`, `BuildIdeaSeed`, `ShadowfeedSeed`. |
+| WL-060 | done | P1 | Runtime fingerprint ABI coverage and deterministic diff primitives. | agent | Runtime fingerprint now includes capability ABI versions and runtime-lock before/after diff contracts/services were added (`RuntimeLockDiffProjection`). |
+| WL-061 | done | P1 | Delta-only overlay replay hardening. | agent | Added `SessionOverlayEventValidator` guardrails to block absolute tracker writes (`currentValue`/`absoluteValue`) during event replay. |
+| WL-062 | done | P2 | Relationship/heat reusable simulation primitives. | agent | Added contracts and deterministic service for heat thresholds, public-awareness transforms, favor debt, downtime, addiction/healing schedules, and faction response seeds. |
+| WL-063 | done | P2 | BuildIdea localization-safe key lineage extension. | agent | `BuildIdeaCard` now exposes optional key/parameter fields (`TitleKey`, `SummaryKey`, `CoreLoopKey`) to avoid prose-only cross-boundary DTO dependence. |
 
 ## Intake Template
 Add new items at the bottom:
