@@ -25706,6 +25706,7 @@
     <PackageReference Include="Microsoft.Extensions.ObjectPool" Version="10.0.2" />
     <PackageReference Include="Microsoft.IO.RecyclableMemoryStream" Version="3.0.1" />
     <PackageReference Include="Microsoft.VisualStudio.Threading" Version="17.14.15" />
+    <PackageReference Include="MoonSharp" Version="2.0.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="NLog" Version="6.0.7" />
     <PackageReference Include="NLog.Schema" Version="6.0.7" />
@@ -25723,18 +25724,18 @@
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
   </ItemGroup>
-  <Target Name="Chummer_PreBuildHookCopy" BeforeTargets="PreBuildEvent"
-          Condition="Exists('$(SolutionDir).git/hooks') and Exists('$(SolutionDir)git/hooks')">
+  <ItemGroup>
+    <ProjectReference Include="..\Chummer.Contracts\Chummer.Contracts.csproj" />
+  </ItemGroup>
+  <Target Name="Chummer_PreBuildHookCopy" BeforeTargets="PreBuildEvent" Condition="Exists('$(SolutionDir).git/hooks') and Exists('$(SolutionDir)git/hooks')">
     <ItemGroup>
       <_GitHookSource Include="$(SolutionDir)git/hooks/*.*" />
     </ItemGroup>
     <Copy SourceFiles="@(_GitHookSource)" DestinationFolder="$(SolutionDir).git/hooks" OverwriteReadOnlyFiles="true" />
   </Target>
   <Target Name="Chummer_PostBuildArtifacts" AfterTargets="PostBuildEvent">
-    <Copy SourceFiles="$(SolutionDir)LICENSE.txt" DestinationFiles="$(TargetDir)LICENSE.txt"
-          Condition="Exists('$(SolutionDir)LICENSE.txt')" />
-    <Copy SourceFiles="$(SolutionDir)LICENSE" DestinationFiles="$(TargetDir)LICENSE"
-          Condition="Exists('$(SolutionDir)LICENSE')" />
+    <Copy SourceFiles="$(SolutionDir)LICENSE.txt" DestinationFiles="$(TargetDir)LICENSE.txt" Condition="Exists('$(SolutionDir)LICENSE.txt')" />
+    <Copy SourceFiles="$(SolutionDir)LICENSE" DestinationFiles="$(TargetDir)LICENSE" Condition="Exists('$(SolutionDir)LICENSE')" />
     <MakeDir Directories="$(TargetDir)livecustomdata;$(TargetDir)packs;$(TargetDir)settings" />
   </Target>
   <PropertyGroup>
