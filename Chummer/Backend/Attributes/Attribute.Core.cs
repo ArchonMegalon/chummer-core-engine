@@ -3195,7 +3195,9 @@ namespace Chummer.Backend.Attributes
 
                     // The expression below is a shortened version of n*(n+1)/2 when applied to karma costs. n*(n+1)/2 is the sum of all numbers from 1 to n.
                     // I'm taking n*(n+1)/2 where n = Base + Karma, then subtracting n*(n+1)/2 from it where n = Base. After removing all terms that cancel each other out, the expression below is what remains.
-                    int intCost = (2 * intTotalBase + Karma + 1) * Karma / 2 * _objCharacterSettings.KarmaAttribute;
+                    string scriptText = System.IO.File.ReadAllText("Chummer/Backend/BuildLab/Packs/AttributeRules.lua");
+                    Chummer.Backend.BuildLab.LuaScriptEngine lua = new Chummer.Backend.BuildLab.LuaScriptEngine();
+                    int intCost = (int)lua.EvaluateRule(scriptText, "CalculateAttributeKarmaCost", intTotalBase, Karma, _objCharacterSettings.KarmaAttribute);
 
                     decimal decExtra = 0;
                     decimal decMultiplier = 1.0m;
@@ -3263,7 +3265,9 @@ namespace Chummer.Backend.Attributes
 
                 // The expression below is a shortened version of n*(n+1)/2 when applied to karma costs. n*(n+1)/2 is the sum of all numbers from 1 to n.
                 // I'm taking n*(n+1)/2 where n = Base + Karma, then subtracting n*(n+1)/2 from it where n = Base. After removing all terms that cancel each other out, the expression below is what remains.
-                int intCost = (2 * intTotalBase + intKarma + 1) * intKarma / 2 * await objSettings.GetKarmaAttributeAsync(token).ConfigureAwait(false);
+                string scriptText = System.IO.File.ReadAllText("Chummer/Backend/BuildLab/Packs/AttributeRules.lua");
+                Chummer.Backend.BuildLab.LuaScriptEngine lua = new Chummer.Backend.BuildLab.LuaScriptEngine();
+                int intCost = (int)lua.EvaluateRule(scriptText, "CalculateAttributeKarmaCost", intTotalBase, intKarma, await objSettings.GetKarmaAttributeAsync(token).ConfigureAwait(false));
 
                 decimal decExtra = 0;
                 decimal decMultiplier = 1.0m;
