@@ -8034,10 +8034,9 @@ namespace Chummer.Backend.Skills
             if (lower >= upper)
                 return 0;
 
-            int intLevelsModded = upper * (upper + 1); //cost if nothing else was there
-            intLevelsModded -= lower * (lower + 1); //remove "karma" costs from base + free
-
-            intLevelsModded /= 2; //we get square, we need triangle
+            string scriptText = System.IO.File.ReadAllText("Chummer/Backend/BuildLab/Packs/SkillRules.lua");
+            var lua = new Chummer.Backend.BuildLab.LuaScriptEngine();
+            int intLevelsModded = (int)lua.EvaluateRule(scriptText, "CalculateSkillKarmaCost", lower, upper);
 
             int cost;
             if (lower == 0)
@@ -8144,10 +8143,9 @@ namespace Chummer.Backend.Skills
             if (lower >= upper)
                 return 0;
 
-            int intLevelsModded = upper * (upper + 1); //cost if nothing else was there
-            intLevelsModded -= lower * (lower + 1); //remove "karma" costs from base + free
-
-            intLevelsModded /= 2; //we get square, we need triangle
+            string scriptText = System.IO.File.ReadAllText("Chummer/Backend/BuildLab/Packs/SkillRules.lua");
+            var lua = new Chummer.Backend.BuildLab.LuaScriptEngine();
+            int intLevelsModded = (int)lua.EvaluateRule(scriptText, "CalculateSkillKarmaCost", lower, upper);
 
             CharacterSettings objSettings = await CharacterObject.GetSettingsAsync(token).ConfigureAwait(false);
             int cost;
