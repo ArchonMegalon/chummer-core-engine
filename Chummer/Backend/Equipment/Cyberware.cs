@@ -9730,8 +9730,10 @@ namespace Chummer.Backend.Equipment
             {
                 decimal decReturn = CalculatedTotalCostWithoutModifiers(funcRating, objGrade);
 
-                if (_blnSuite)
-                    decReturn *= 0.9m;
+                string scriptPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Backend", "BuildLab", "Packs", "CyberwareRules.lua");
+                string script = System.IO.File.ReadAllText(scriptPath);
+                var engine = new Chummer.Backend.BuildLab.LuaScriptEngine();
+                decReturn = (decimal)engine.EvaluateRule(script, "CalculateTotalCost", (double)decReturn, _blnSuite);
 
                 return decReturn;
             }
@@ -9827,8 +9829,10 @@ namespace Chummer.Backend.Equipment
                 token.ThrowIfCancellationRequested();
                 decimal decReturn = await CalculatedTotalCostWithoutModifiersAsync(funcRating, objGrade, token).ConfigureAwait(false);
 
-                if (_blnSuite)
-                    decReturn *= 0.9m;
+                string scriptPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Backend", "BuildLab", "Packs", "CyberwareRules.lua");
+                string script = System.IO.File.ReadAllText(scriptPath);
+                var engine = new Chummer.Backend.BuildLab.LuaScriptEngine();
+                decReturn = (decimal)engine.EvaluateRule(script, "CalculateTotalCost", (double)decReturn, _blnSuite);
 
                 return decReturn;
             }
