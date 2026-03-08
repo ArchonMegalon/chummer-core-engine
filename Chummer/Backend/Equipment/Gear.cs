@@ -4596,8 +4596,9 @@ namespace Chummer.Backend.Equipment
                 // The number is divided at the end for ammo purposes. This is done since the cost is per "costfor" but is being multiplied by the actual number of rounds.
                 int intParentMultiplier = (Parent as IHasChildrenAndCost<Gear>)?.ChildCostMultiplier ?? 1;
 
-                // Add in the cost of the plugins separate since their value is not based on the Cost For number (it is always cost x qty).
-                return OwnCostPreMultipliers * Quantity * intParentMultiplier / CostFor + decPlugin * Quantity;
+                var engine = new Chummer.Backend.BuildLab.LuaScriptEngine();
+                string script = System.IO.File.ReadAllText(System.IO.Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "Backend", "BuildLab", "Packs", "GearRules.lua"));
+                return (decimal)engine.EvaluateRule(script, "CalculateTotalCost", (double)OwnCostPreMultipliers, (double)Quantity, (double)intParentMultiplier, (double)CostFor, (double)decPlugin);
             }
         }
 
@@ -4614,8 +4615,9 @@ namespace Chummer.Backend.Equipment
             // The number is divided at the end for ammo purposes. This is done since the cost is per "costfor" but is being multiplied by the actual number of rounds.
             int intParentMultiplier = (Parent as IHasChildrenAndCost<Gear>)?.ChildCostMultiplier ?? 1;
 
-            // Add in the cost of the plugins separate since their value is not based on the Cost For number (it is always cost x qty).
-            return await GetOwnCostPreMultipliersAsync(token).ConfigureAwait(false) * Quantity * intParentMultiplier / CostFor + decPlugin * Quantity;
+            var engine = new Chummer.Backend.BuildLab.LuaScriptEngine();
+            string script = System.IO.File.ReadAllText(System.IO.Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "Backend", "BuildLab", "Packs", "GearRules.lua"));
+            return (decimal)engine.EvaluateRule(script, "CalculateTotalCost", (double)await GetOwnCostPreMultipliersAsync(token).ConfigureAwait(false), (double)Quantity, (double)intParentMultiplier, (double)CostFor, (double)decPlugin);
         }
 
         public decimal StolenTotalCost => CalculatedStolenTotalCost(true);

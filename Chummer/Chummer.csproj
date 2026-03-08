@@ -662,6 +662,9 @@
     <Content Include="Backend\BuildLab\Packs\ArmorRules.lua">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="Backend\BuildLab\Packs\GearRules.lua">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="Backend\BuildLab\Packs\SpellRules.lua">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
