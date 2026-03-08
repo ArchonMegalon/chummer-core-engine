@@ -2734,8 +2734,15 @@ namespace Chummer.Backend.Equipment
         /// <summary>
         /// Matrix Condition Monitor boxes.
         /// </summary>
-        public int MatrixCM => BaseMatrixBoxes + this.GetTotalMatrixAttribute("Device Rating").DivAwayFromZero(2)
-                                               + TotalBonusMatrixBoxes;
+        public int MatrixCM
+        {
+            get
+            {
+                var lua = new Chummer.Backend.BuildLab.LuaScriptEngine();
+                string scriptText = System.IO.File.ReadAllText("Chummer/Backend/BuildLab/Packs/ArmorRules.lua");
+                return (int)lua.EvaluateRule(scriptText, "CalculateMatrixCM", BaseMatrixBoxes, this.GetTotalMatrixAttribute("Device Rating"), TotalBonusMatrixBoxes);
+            }
+        }
 
         /// <summary>
         /// Matrix Condition Monitor boxes filled.
