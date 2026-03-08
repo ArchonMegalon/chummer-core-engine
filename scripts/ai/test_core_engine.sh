@@ -1,5 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 source "$(dirname "$0")/_env.sh"
-dotnet build Chummer.CoreEngine.Tests/Chummer.CoreEngine.Tests.csproj --nologo -m:1 "$@"
-dotnet Chummer.CoreEngine.Tests/bin/Debug/net10.0/Chummer.CoreEngine.Tests.dll
+project_path="Chummer.CoreEngine.Tests/Chummer.CoreEngine.Tests.csproj"
+target_framework="$(
+  grep -m 1 "<TargetFramework>" "$project_path" | sed 's:.*<TargetFramework>::; s:</TargetFramework>.*::'
+)"
+
+if [[ -z "$target_framework" ]]; then
+  echo "Unable to determine TargetFramework from $project_path" >&2
+  exit 1
+fi
+
+dotnet build "$project_path" --nologo -m:1 "$@"
+dotnet "Chummer.CoreEngine.Tests/bin/Debug/$target_framework/Chummer.CoreEngine.Tests.dll"
