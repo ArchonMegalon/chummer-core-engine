@@ -109,3 +109,36 @@ public sealed record RuntimeInspectorProjection(
     DateTimeOffset GeneratedAtUtc,
     string ProfileSourceKind = RegistryEntrySourceKinds.PersistedManifest,
     IReadOnlyList<RuntimeInspectorCapabilityDescriptorProjection>? CapabilityDescriptors = null);
+
+public static class RuntimeInspectorContractLocalization
+{
+    public static string ResolveMessageKey(RuntimeInspectorWarning warning)
+    {
+        ArgumentNullException.ThrowIfNull(warning);
+
+        return string.IsNullOrWhiteSpace(warning.MessageKey)
+            ? warning.Message
+            : warning.MessageKey;
+    }
+
+    public static IReadOnlyList<RulesetExplainParameter> ResolveMessageParameters(RuntimeInspectorWarning warning)
+    {
+        ArgumentNullException.ThrowIfNull(warning);
+        return warning.MessageParameters ?? [];
+    }
+
+    public static string ResolveSummaryKey(RuntimeMigrationPreviewItem item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+
+        return string.IsNullOrWhiteSpace(item.SummaryKey)
+            ? item.Summary
+            : item.SummaryKey;
+    }
+
+    public static IReadOnlyList<RulesetExplainParameter> ResolveSummaryParameters(RuntimeMigrationPreviewItem item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        return item.SummaryParameters ?? [];
+    }
+}

@@ -139,3 +139,21 @@ public sealed record RulePackPublicationReceipt(
     string ReviewState,
     IReadOnlyList<RulePackShareGrant> Shares,
     RulePackForkLineage? ForkLineage = null);
+
+public static class RulePackInstallContractLocalization
+{
+    public static string ResolvePreviewSummaryKey(RulePackInstallPreviewItem item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+
+        return string.IsNullOrWhiteSpace(item.SummaryKey)
+            ? item.Summary
+            : item.SummaryKey;
+    }
+
+    public static IReadOnlyList<RulesetExplainParameter> ResolvePreviewSummaryParameters(RulePackInstallPreviewItem item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        return item.SummaryParameters ?? [];
+    }
+}

@@ -54,3 +54,21 @@ public sealed record RuleProfileApplyReceipt(
     RuleProfilePreviewReceipt Preview,
     RuntimeLockInstallReceipt? InstallReceipt = null,
     string? DeferredReason = null);
+
+public static class RuleProfileContractLocalization
+{
+    public static string ResolvePreviewSummaryKey(RuleProfilePreviewItem item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+
+        return string.IsNullOrWhiteSpace(item.SummaryKey)
+            ? item.Summary
+            : item.SummaryKey;
+    }
+
+    public static IReadOnlyList<RulesetExplainParameter> ResolvePreviewSummaryParameters(RuleProfilePreviewItem item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        return item.SummaryParameters ?? [];
+    }
+}

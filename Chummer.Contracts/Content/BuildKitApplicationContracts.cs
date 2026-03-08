@@ -61,3 +61,21 @@ public sealed record BuildKitApplicationReceipt(
     IReadOnlyList<BuildKitAppliedAction> AppliedActions,
     IReadOnlyList<BuildKitValidationIssue> Issues,
     CharacterVersionReference? ResultingCharacterVersion = null);
+
+public static class BuildKitContractLocalization
+{
+    public static string ResolveIssueMessageKey(BuildKitValidationIssue issue)
+    {
+        ArgumentNullException.ThrowIfNull(issue);
+
+        return string.IsNullOrWhiteSpace(issue.MessageKey)
+            ? issue.Message
+            : issue.MessageKey;
+    }
+
+    public static IReadOnlyList<RulesetExplainParameter> ResolveIssueMessageParameters(BuildKitValidationIssue issue)
+    {
+        ArgumentNullException.ThrowIfNull(issue);
+        return issue.MessageParameters ?? [];
+    }
+}

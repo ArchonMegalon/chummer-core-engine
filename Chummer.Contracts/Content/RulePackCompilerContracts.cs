@@ -59,3 +59,21 @@ public sealed record RulePackCompileReceipt(
     RulePackResolutionResult Resolution,
     ResolvedRuntimeLock? RuntimeLock,
     DateTimeOffset CompiledAtUtc);
+
+public static class RulePackResolutionDiagnosticLocalization
+{
+    public static string ResolveMessageKey(RulePackResolutionDiagnostic diagnostic)
+    {
+        ArgumentNullException.ThrowIfNull(diagnostic);
+
+        return string.IsNullOrWhiteSpace(diagnostic.MessageKey)
+            ? diagnostic.Message
+            : diagnostic.MessageKey;
+    }
+
+    public static IReadOnlyList<RulesetExplainParameter> ResolveMessageParameters(RulePackResolutionDiagnostic diagnostic)
+    {
+        ArgumentNullException.ThrowIfNull(diagnostic);
+        return diagnostic.MessageParameters ?? [];
+    }
+}

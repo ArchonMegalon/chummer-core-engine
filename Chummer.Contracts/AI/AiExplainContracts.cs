@@ -24,6 +24,41 @@ public static class AiExplainFragmentKinds
     public const string Note = "note";
 }
 
+public sealed record AiExplainEvidencePointerProjection(
+    string Kind,
+    string Pointer,
+    string? LabelKey = null,
+    IReadOnlyList<RulesetExplainParameter>? LabelParameters = null,
+    string? ProviderId = null,
+    string? PackId = null,
+    string? RuleId = null);
+
+public sealed record AiExplainTraceStepProjection(
+    string StepId,
+    string ProviderId,
+    string CapabilityId,
+    string? PackId,
+    string Category,
+    string ExplanationKey,
+    IReadOnlyList<RulesetExplainParameter> ExplanationParameters,
+    decimal? Modifier = null,
+    bool? Certain = null,
+    string? RuleId = null,
+    IReadOnlyList<AiExplainEvidencePointerProjection>? Evidence = null);
+
+public sealed record AiExplainValueProvenanceProjection(
+    string RuntimeFingerprint,
+    string RulesetId,
+    string EngineApiVersion,
+    string CatalogKind,
+    string RuntimeTitle,
+    string? ProfileId = null,
+    string? ProfileTitle = null,
+    string? ProviderId = null,
+    string? PackId = null,
+    IReadOnlyList<string>? RulePacks = null,
+    IReadOnlyDictionary<string, string>? ProviderBindings = null);
+
 public sealed record AiExplainValueQuery(
     string? RuntimeFingerprint = null,
     string? CharacterId = null,
@@ -56,4 +91,7 @@ public sealed record AiExplainValueProjection(
     int? ProviderGasBudget = null,
     int? RequestGasBudget = null,
     IReadOnlyList<AiExplainFragmentProjection>? Fragments = null,
-    IReadOnlyList<RulesetCapabilityDiagnostic>? Diagnostics = null);
+    IReadOnlyList<RulesetCapabilityDiagnostic>? Diagnostics = null,
+    AiExplainValueProvenanceProjection? Provenance = null,
+    IReadOnlyList<AiExplainTraceStepProjection>? Trace = null,
+    IReadOnlyList<AiExplainEvidencePointerProjection>? Evidence = null);

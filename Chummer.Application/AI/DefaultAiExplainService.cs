@@ -45,6 +45,9 @@ public sealed class DefaultAiExplainService : IAiExplainService
             return null;
         }
 
+        AiSessionDigestProjection? sessionDigest = characterId is null
+            ? null
+            : _aiDigestService.GetSessionDigest(owner, characterId);
         string? requestedCapabilityId = NormalizeOptional(query.CapabilityId) ?? NormalizeOptional(query.ExplainEntryId);
         if (requestedCapabilityId is null)
         {
@@ -79,6 +82,9 @@ public sealed class DefaultAiExplainService : IAiExplainService
             ?? (invocation.Diagnostics.Count > 0 ? "ruleset.explain.summary.diagnostic" : "ruleset.explain.summary.default");
         IReadOnlyList<RulesetExplainParameter> summaryParameters = invocation.Explain?.SummaryParameters
             ?? BuildDefaultSummaryParameters(descriptor, runtimeSummary, invocation.Diagnostics.FirstOrDefault());
+        AiExplainValueProvenanceProjection provenance = BuildProvenance(runtimeSummary, sessionDigest, providerId, packId);
+        IReadOnlyList<AiExplainEvidencePointerProjection> evidence = BuildEvidence(runtimeSummary, sessionDigest, descriptor, providerId, packId, invocation);
+        IReadOnlyList<AiExplainTraceStepProjection> trace = BuildTrace(runtimeSummary, sessionDigest, descriptor, providerId, packId, invocation);
 
         return new AiExplainValueProjection(
             ExplainEntryId: explainEntryId,
@@ -99,7 +105,10 @@ public sealed class DefaultAiExplainService : IAiExplainService
             ProviderGasBudget: descriptor.DefaultGasBudget.ProviderInstructionLimit,
             RequestGasBudget: descriptor.DefaultGasBudget.RequestInstructionLimit,
             Fragments: BuildFragments(runtimeSummary, characterDigest, descriptor, providerId, packId, invocation),
-            Diagnostics: invocation.Diagnostics);
+            Diagnostics: invocation.Diagnostics,
+            Provenance: provenance,
+            Trace: trace,
+            Evidence: evidence);
     }
 
     private static IReadOnlyList<RulesetCapabilityArgument> BuildInvocationArguments(
@@ -240,6 +249,257 @@ public sealed class DefaultAiExplainService : IAiExplainService
         return fragments;
     }
 
+    private static AiExplainValueProvenanceProjection BuildProvenance(
+        AiRuntimeSummaryProjection runtimeSummary,
+        AiSessionDigestProjection? sessionDigest,
+        string? providerId,
+        string? packId)
+    {
+        return new AiExplainValueProvenanceProjection(
+            RuntimeFingerprint: runtimeSummary.RuntimeFingerprint,
+            RulesetId: runtimeSummary.RulesetId,
+            EngineApiVersion: runtimeSummary.EngineApiVersion,
+            CatalogKind: runtimeSummary.CatalogKind,
+            RuntimeTitle: runtimeSummary.Title,
+            ProfileId: sessionDigest?.ProfileId,
+            ProfileTitle: sessionDigest?.ProfileTitle,
+            ProviderId: providerId,
+            PackId: packId,
+            RulePacks: runtimeSummary.RulePacks,
+            ProviderBindings: new Dictionary<string, string>(runtimeSummary.ProviderBindings, StringComparer.Ordinal));
+    }
+
+    private static IReadOnlyList<AiExplainTraceStepProjection> BuildTrace(
+        AiRuntimeSummaryProjection runtimeSummary,
+        AiSessionDigestProjection? sessionDigest,
+        RulesetCapabilityDescriptor descriptor,
+        string? providerId,
+        string? packId,
+        RulesetCapabilityInvocationResult invocation)
+    {
+        List<AiExplainTraceStepProjection> steps = [];
+        IReadOnlyList<AiExplainEvidencePointerProjection> defaultEvidence = BuildEvidence(
+            runtimeSummary,
+            sessionDigest,
+            descriptor,
+            providerId,
+            packId,
+            invocation);
+
+        if (invocation.Explain is not null)
+        {
+            int providerIndex = 0;
+            foreach (RulesetProviderTrace provider in invocation.Explain.Providers)
+            {
+                int stepIndex = 0;
+                foreach (RulesetTraceStep step in provider.Steps)
+                {
+                    steps.Add(new AiExplainTraceStepProjection(
+                        StepId: $"{provider.ProviderId}:{providerIndex}:{stepIndex}",
+                        ProviderId: provider.ProviderId,
+                        CapabilityId: step.CapabilityId,
+                        PackId: step.PackId,
+                        Category: step.Category,
+                        ExplanationKey: step.ExplanationKey,
+                        ExplanationParameters: step.ExplanationParameters,
+                        Modifier: step.Modifier,
+                        Certain: step.Certain,
+                        RuleId: step.RuleId,
+                        Evidence: MergeEvidence(defaultEvidence, ToEvidence(step.Evidence))));
+                    stepIndex++;
+                }
+
+                providerIndex++;
+            }
+        }
+
+        if (steps.Count == 0)
+        {
+            steps.Add(new AiExplainTraceStepProjection(
+                StepId: "binding:0",
+                ProviderId: providerId ?? descriptor.CapabilityId,
+                CapabilityId: descriptor.CapabilityId,
+                PackId: packId,
+                Category: "provider-binding",
+                ExplanationKey: "ruleset.explain.trace.provider-binding",
+                ExplanationParameters:
+                [
+                    Param("capabilityId", descriptor.CapabilityId),
+                    Param("providerId", providerId),
+                    Param("packId", packId)
+                ],
+                Evidence: defaultEvidence));
+
+            if (invocation.Explain is null)
+            {
+                steps.Add(new AiExplainTraceStepProjection(
+                    StepId: "trace:missing",
+                    ProviderId: providerId ?? descriptor.CapabilityId,
+                    CapabilityId: descriptor.CapabilityId,
+                    PackId: packId,
+                    Category: "trace",
+                    ExplanationKey: "ruleset.explain.fragment.trace.missing",
+                    ExplanationParameters: [],
+                    Evidence: defaultEvidence));
+            }
+        }
+
+        for (int diagnosticIndex = 0; diagnosticIndex < invocation.Diagnostics.Count; diagnosticIndex++)
+        {
+            RulesetCapabilityDiagnostic diagnostic = invocation.Diagnostics[diagnosticIndex];
+            steps.Add(new AiExplainTraceStepProjection(
+                StepId: $"diagnostic:{diagnosticIndex}",
+                ProviderId: providerId ?? descriptor.CapabilityId,
+                CapabilityId: descriptor.CapabilityId,
+                PackId: packId,
+                Category: "diagnostic",
+                ExplanationKey: RulesetCapabilityDiagnosticLocalization.ResolveMessageKey(diagnostic),
+                ExplanationParameters: RulesetCapabilityDiagnosticLocalization.ResolveMessageParameters(diagnostic),
+                Evidence: MergeEvidence(
+                    defaultEvidence,
+                    [
+                        new AiExplainEvidencePointerProjection(
+                            Kind: RulesetEvidencePointerKinds.Diagnostic,
+                            Pointer: diagnostic.Code,
+                            LabelKey: "ruleset.explain.evidence.diagnostic",
+                            LabelParameters:
+                            [
+                                Param("code", diagnostic.Code),
+                                Param("severity", diagnostic.Severity)
+                            ])
+                    ])));
+        }
+
+        return steps;
+    }
+
+    private static IReadOnlyList<AiExplainEvidencePointerProjection> BuildEvidence(
+        AiRuntimeSummaryProjection runtimeSummary,
+        AiSessionDigestProjection? sessionDigest,
+        RulesetCapabilityDescriptor descriptor,
+        string? providerId,
+        string? packId,
+        RulesetCapabilityInvocationResult invocation)
+    {
+        Dictionary<string, AiExplainEvidencePointerProjection> evidence = new(StringComparer.Ordinal);
+
+        AddEvidence(
+            evidence,
+            new AiExplainEvidencePointerProjection(
+                Kind: RulesetEvidencePointerKinds.RuntimeLock,
+                Pointer: runtimeSummary.RuntimeFingerprint,
+                LabelKey: "ruleset.explain.evidence.runtime-lock",
+                LabelParameters:
+                [
+                    Param("runtimeFingerprint", runtimeSummary.RuntimeFingerprint),
+                    Param("rulesetId", runtimeSummary.RulesetId)
+                ]));
+        AddEvidence(
+            evidence,
+            new AiExplainEvidencePointerProjection(
+                Kind: RulesetEvidencePointerKinds.CapabilityDescriptor,
+                Pointer: descriptor.CapabilityId,
+                LabelKey: "ruleset.explain.evidence.capability-descriptor",
+                LabelParameters:
+                [
+                    Param("capabilityId", descriptor.CapabilityId),
+                    Param("invocationKind", descriptor.InvocationKind)
+                ],
+                ProviderId: providerId,
+                PackId: packId,
+                RuleId: descriptor.CapabilityId));
+
+        if (!string.IsNullOrWhiteSpace(sessionDigest?.ProfileId))
+        {
+            AddEvidence(
+                evidence,
+                new AiExplainEvidencePointerProjection(
+                    Kind: RulesetEvidencePointerKinds.RuleProfile,
+                    Pointer: sessionDigest!.ProfileId!,
+                    LabelKey: "ruleset.explain.evidence.rule-profile",
+                    LabelParameters:
+                    [
+                        Param("profileId", sessionDigest.ProfileId),
+                        Param("profileTitle", sessionDigest.ProfileTitle)
+                    ]));
+        }
+
+        if (!string.IsNullOrWhiteSpace(providerId))
+        {
+            AddEvidence(
+                evidence,
+                new AiExplainEvidencePointerProjection(
+                    Kind: RulesetEvidencePointerKinds.ProviderBinding,
+                    Pointer: providerId!,
+                    LabelKey: "ruleset.explain.evidence.provider-binding",
+                    LabelParameters:
+                    [
+                        Param("providerId", providerId),
+                        Param("capabilityId", descriptor.CapabilityId)
+                    ],
+                    ProviderId: providerId,
+                    PackId: packId,
+                    RuleId: descriptor.CapabilityId));
+        }
+
+        if (!string.IsNullOrWhiteSpace(packId))
+        {
+            AddEvidence(
+                evidence,
+                new AiExplainEvidencePointerProjection(
+                    Kind: RulesetEvidencePointerKinds.RulePack,
+                    Pointer: packId!,
+                    LabelKey: "ruleset.explain.evidence.rulepack",
+                    LabelParameters:
+                    [
+                        Param("packId", packId)
+                    ],
+                    ProviderId: providerId,
+                    PackId: packId));
+        }
+
+        if (invocation.Explain is not null)
+        {
+            foreach (AiExplainEvidencePointerProjection pointer in ToEvidence(invocation.Explain.Evidence))
+            {
+                AddEvidence(evidence, pointer);
+            }
+
+            foreach (RulesetProviderTrace provider in invocation.Explain.Providers)
+            {
+                foreach (AiExplainEvidencePointerProjection pointer in ToEvidence(provider.Evidence))
+                {
+                    AddEvidence(evidence, pointer);
+                }
+
+                foreach (RulesetTraceStep step in provider.Steps)
+                {
+                    foreach (AiExplainEvidencePointerProjection pointer in ToEvidence(step.Evidence))
+                    {
+                        AddEvidence(evidence, pointer);
+                    }
+                }
+            }
+        }
+
+        foreach (RulesetCapabilityDiagnostic diagnostic in invocation.Diagnostics)
+        {
+            AddEvidence(
+                evidence,
+                new AiExplainEvidencePointerProjection(
+                    Kind: RulesetEvidencePointerKinds.Diagnostic,
+                    Pointer: diagnostic.Code,
+                    LabelKey: "ruleset.explain.evidence.diagnostic",
+                    LabelParameters:
+                    [
+                        Param("code", diagnostic.Code),
+                        Param("severity", diagnostic.Severity)
+                    ]));
+        }
+
+        return evidence.Values.ToArray();
+    }
+
     private static string ResolveEntryKind(RulesetCapabilityDescriptor descriptor)
     {
         if (descriptor.SessionSafe)
@@ -302,5 +562,50 @@ public sealed class DefaultAiExplainService : IAiExplainService
         }
 
         return parameters;
+    }
+
+    private static IReadOnlyList<AiExplainEvidencePointerProjection> ToEvidence(IReadOnlyList<RulesetEvidencePointer>? evidence)
+    {
+        if (evidence is null || evidence.Count == 0)
+        {
+            return [];
+        }
+
+        return evidence
+            .Select(pointer => new AiExplainEvidencePointerProjection(
+                Kind: pointer.Kind,
+                Pointer: pointer.Pointer,
+                LabelKey: pointer.LabelKey,
+                LabelParameters: pointer.LabelParameters ?? [],
+                ProviderId: pointer.ProviderId,
+                PackId: pointer.PackId,
+                RuleId: pointer.RuleId))
+            .ToArray();
+    }
+
+    private static IReadOnlyList<AiExplainEvidencePointerProjection> MergeEvidence(
+        IReadOnlyList<AiExplainEvidencePointerProjection> baseline,
+        IReadOnlyList<AiExplainEvidencePointerProjection> additional)
+    {
+        Dictionary<string, AiExplainEvidencePointerProjection> merged = new(StringComparer.Ordinal);
+        foreach (AiExplainEvidencePointerProjection pointer in baseline)
+        {
+            AddEvidence(merged, pointer);
+        }
+
+        foreach (AiExplainEvidencePointerProjection pointer in additional)
+        {
+            AddEvidence(merged, pointer);
+        }
+
+        return merged.Values.ToArray();
+    }
+
+    private static void AddEvidence(
+        IDictionary<string, AiExplainEvidencePointerProjection> target,
+        AiExplainEvidencePointerProjection pointer)
+    {
+        string key = $"{pointer.Kind}|{pointer.Pointer}|{pointer.ProviderId}|{pointer.PackId}|{pointer.RuleId}";
+        target[key] = pointer;
     }
 }

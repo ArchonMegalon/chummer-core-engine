@@ -83,3 +83,36 @@ public sealed record RuntimeLockInstallPreviewReceipt(
     IReadOnlyList<RuntimeLockInstallPreviewItem> Changes,
     IReadOnlyList<RuntimeInspectorWarning> Warnings,
     bool RequiresConfirmation = false);
+
+public static class RuntimeLockContractLocalization
+{
+    public static string ResolveCompatibilityMessageKey(RuntimeLockCompatibilityDiagnostic diagnostic)
+    {
+        ArgumentNullException.ThrowIfNull(diagnostic);
+
+        return string.IsNullOrWhiteSpace(diagnostic.MessageKey)
+            ? diagnostic.Message
+            : diagnostic.MessageKey;
+    }
+
+    public static IReadOnlyList<RulesetExplainParameter> ResolveCompatibilityMessageParameters(RuntimeLockCompatibilityDiagnostic diagnostic)
+    {
+        ArgumentNullException.ThrowIfNull(diagnostic);
+        return diagnostic.MessageParameters ?? [];
+    }
+
+    public static string ResolveInstallPreviewSummaryKey(RuntimeLockInstallPreviewItem item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+
+        return string.IsNullOrWhiteSpace(item.SummaryKey)
+            ? item.Summary
+            : item.SummaryKey;
+    }
+
+    public static IReadOnlyList<RulesetExplainParameter> ResolveInstallPreviewSummaryParameters(RuntimeLockInstallPreviewItem item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        return item.SummaryParameters ?? [];
+    }
+}

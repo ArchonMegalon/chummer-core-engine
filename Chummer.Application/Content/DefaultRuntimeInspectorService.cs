@@ -33,22 +33,30 @@ public sealed class DefaultRuntimeInspectorService : IRuntimeInspectorService
 
         IReadOnlyDictionary<string, RulePackRegistryEntry> registryEntries = _rulePackRegistryService.List(owner, profile.Manifest.RulesetId)
             .ToDictionary(entry => entry.Manifest.PackId, StringComparer.Ordinal);
+        string[] knownPackIds = registryEntries.Keys
+            .OrderByDescending(static packId => packId.Length)
+            .ThenBy(static packId => packId, StringComparer.Ordinal)
+            .ToArray();
 
         RuntimeInspectorRulePackEntry[] resolvedRulePacks = profile.Manifest.RulePacks
             .Select(selection => ToResolvedRulePackEntry(selection, registryEntries.GetValueOrDefault(selection.RulePack.Id)))
+            .OrderBy(static entry => entry.RulePack.Id, StringComparer.Ordinal)
+            .ThenBy(static entry => entry.RulePack.Version, StringComparer.Ordinal)
             .ToArray();
         RuntimeInspectorProviderBinding[] providerBindings = profile.Manifest.RuntimeLock.ProviderBindings
+            .OrderBy(static binding => binding.Key, StringComparer.Ordinal)
+            .ThenBy(static binding => binding.Value, StringComparer.Ordinal)
             .Select(binding => new RuntimeInspectorProviderBinding(
                 CapabilityId: binding.Key,
                 ProviderId: binding.Value,
-                PackId: TryResolvePackId(binding.Value, registryEntries.Keys),
+                PackId: TryResolvePackId(binding.Value, knownPackIds),
                 SourceAssetPath: null,
                 SessionSafe: false))
             .ToArray();
         RuntimeInspectorCapabilityDescriptorProjection[] capabilityDescriptors = BuildCapabilityDescriptors(
             profile.Manifest.RulesetId,
             profile.Manifest.RuntimeLock.ProviderBindings,
-            registryEntries.Keys);
+            knownPackIds);
         RuntimeLockCompatibilityDiagnostic[] compatibilityDiagnostics = BuildCompatibilityDiagnostics(profile, registryEntries);
         RuntimeInspectorWarning[] warnings = BuildWarnings(profile, resolvedRulePacks, compatibilityDiagnostics);
         RuntimeMigrationPreviewItem[] migrationPreview = BuildMigrationPreview(profile, resolvedRulePacks);
@@ -110,7 +118,12 @@ public sealed class DefaultRuntimeInspectorService : IRuntimeInspectorService
             Title: registryEntry?.Manifest.Title ?? selection.RulePack.Id,
             Visibility: registryEntry?.Publication.Visibility ?? ArtifactVisibilityModes.LocalOnly,
             TrustTier: registryEntry?.Manifest.TrustTier ?? ArtifactTrustTiers.LocalOnly,
-            CapabilityIds: registryEntry?.Manifest.Capabilities.Select(capability => capability.CapabilityId).ToArray() ?? [],
+            CapabilityIds: registryEntry is null
+                ? []
+                : registryEntry.Manifest.Capabilities
+                    .Select(static capability => capability.CapabilityId)
+                    .OrderBy(static capabilityId => capabilityId, StringComparer.Ordinal)
+                    .ToArray(),
             Enabled: selection.EnabledByDefault,
             SourceKind: registryEntry?.SourceKind ?? RegistryEntrySourceKinds.PersistedManifest);
     }
@@ -121,7 +134,9 @@ public sealed class DefaultRuntimeInspectorService : IRuntimeInspectorService
     {
         List<RuntimeLockCompatibilityDiagnostic> diagnostics = [];
 
-        foreach (RuleProfilePackSelection selection in profile.Manifest.RulePacks)
+        foreach (RuleProfilePackSelection selection in profile.Manifest.RulePacks
+                     .OrderBy(static selection => selection.RulePack.Id, StringComparer.Ordinal)
+                     .ThenBy(static selection => selection.RulePack.Version, StringComparer.Ordinal))
         {
             if (!registryEntries.ContainsKey(selection.RulePack.Id))
             {

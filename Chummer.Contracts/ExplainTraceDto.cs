@@ -7,5 +7,8 @@ public record ExplainTraceDto(
     int FinalValue,
     string SummaryKey,
     IReadOnlyDictionary<string, string> SummaryParameters,
-    IReadOnlyList<TraceStepDto> Steps
+    IReadOnlyList<TraceStepDto> Steps,
+    string? RuntimeFingerprint = null,
+    string? ProfileId = null,
+    IReadOnlyList<ExplainEvidencePointerDto>? Evidence = null
 );

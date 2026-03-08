@@ -7,5 +7,9 @@ public record TraceStepDto(
     string SourcePackId,
     string LocalizationKey,
     IReadOnlyDictionary<string, string> LocalizationParameters,
-    int ModifierApplied
+    int ModifierApplied,
+    string? CapabilityId = null,
+    string? Category = null,
+    string? RuleId = null,
+    IReadOnlyList<ExplainEvidencePointerDto>? Evidence = null
 );

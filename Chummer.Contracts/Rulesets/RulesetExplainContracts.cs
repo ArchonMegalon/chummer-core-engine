@@ -1,5 +1,16 @@
 namespace Chummer.Contracts.Rulesets;
 
+public static class RulesetEvidencePointerKinds
+{
+    public const string RuntimeLock = "runtime-lock";
+    public const string RuleProfile = "rule-profile";
+    public const string RulePack = "rulepack";
+    public const string ProviderBinding = "provider-binding";
+    public const string CapabilityDescriptor = "capability-descriptor";
+    public const string RuleReference = "rule-reference";
+    public const string Diagnostic = "diagnostic";
+}
+
 public sealed record RulesetGasBudget(
     int ProviderInstructionLimit,
     int RequestInstructionLimit,
@@ -22,6 +33,15 @@ public sealed record RulesetExplainParameter(
     string Name,
     RulesetCapabilityValue Value);
 
+public sealed record RulesetEvidencePointer(
+    string Kind,
+    string Pointer,
+    string? LabelKey = null,
+    IReadOnlyList<RulesetExplainParameter>? LabelParameters = null,
+    string? ProviderId = null,
+    string? PackId = null,
+    string? RuleId = null);
+
 public sealed record RulesetTraceStep(
     string ProviderId,
     string CapabilityId,
@@ -30,7 +50,9 @@ public sealed record RulesetTraceStep(
     IReadOnlyList<RulesetExplainParameter> ExplanationParameters,
     string Category,
     decimal? Modifier = null,
-    bool? Certain = null);
+    bool? Certain = null,
+    string? RuleId = null,
+    IReadOnlyList<RulesetEvidencePointer>? Evidence = null);
 
 public sealed record RulesetProviderTrace(
     string ProviderId,
@@ -38,7 +60,8 @@ public sealed record RulesetProviderTrace(
     string? PackId,
     bool Success,
     IReadOnlyList<RulesetTraceStep> Steps,
-    RulesetGasUsage GasUsage);
+    RulesetGasUsage GasUsage,
+    IReadOnlyList<RulesetEvidencePointer>? Evidence = null);
 
 public sealed record RulesetExplainTrace(
     string TargetKey,
@@ -46,4 +69,7 @@ public sealed record RulesetExplainTrace(
     string SummaryKey,
     IReadOnlyList<RulesetExplainParameter> SummaryParameters,
     IReadOnlyList<RulesetProviderTrace> Providers,
-    RulesetGasUsage AggregateGasUsage);
+    RulesetGasUsage AggregateGasUsage,
+    string? RuntimeFingerprint = null,
+    string? ProfileId = null,
+    IReadOnlyList<RulesetEvidencePointer>? Evidence = null);

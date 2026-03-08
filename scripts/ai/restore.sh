@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -euo pipefail
 source "$(dirname "$0")/_env.sh"
-dotnet restore "$@" -m:1
+dotnet_with_default_target restore "$@" -m:1

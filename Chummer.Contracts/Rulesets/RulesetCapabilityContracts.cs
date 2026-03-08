@@ -102,6 +102,24 @@ public interface IRulesetCapabilityHost
     ValueTask<RulesetCapabilityInvocationResult> InvokeAsync(RulesetCapabilityInvocationRequest request, CancellationToken ct);
 }
 
+public static class RulesetCapabilityDiagnosticLocalization
+{
+    public static string ResolveMessageKey(RulesetCapabilityDiagnostic diagnostic)
+    {
+        ArgumentNullException.ThrowIfNull(diagnostic);
+
+        return string.IsNullOrWhiteSpace(diagnostic.MessageKey)
+            ? diagnostic.Message
+            : diagnostic.MessageKey;
+    }
+
+    public static IReadOnlyList<RulesetExplainParameter> ResolveMessageParameters(RulesetCapabilityDiagnostic diagnostic)
+    {
+        ArgumentNullException.ThrowIfNull(diagnostic);
+        return diagnostic.MessageParameters ?? [];
+    }
+}
+
 public sealed class RulesetRuleHostCapabilityAdapter : IRulesetRuleHost
 {
     private readonly IRulesetCapabilityHost _capabilityHost;

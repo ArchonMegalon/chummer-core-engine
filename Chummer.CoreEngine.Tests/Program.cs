@@ -1,8 +1,11 @@
+using Chummer.Application.AI;
 using Chummer.Application.BuildLab;
 using Chummer.Application.Content;
 using Chummer.Application.Journal;
 using Chummer.Application.Session;
+using Chummer.Contracts.AI;
 using Chummer.Contracts.BuildLab;
+using Chummer.Contracts.Characters;
 using Chummer.Contracts.Content;
 using Chummer.Contracts.Journal;
 using Chummer.Contracts.Owners;
@@ -25,7 +28,10 @@ internal static class CoreEngineTests
             ExperimentalRulesetsEmitDiagnosticMessageKeys();
             SessionReplayDiagnosticsStayKeyed();
             RuntimeInspectorProjectsCapabilityAndCompatibilityKeys();
+            RuntimeInspectorProjectionIsDeterministicAcrossPackAndBindingOrder();
             RuntimeLockDiffIsDeterministicAndParameterized();
+            AiExplainProjectionEmitsStructuredProvenance();
+            LocalizationFallbackHelpersNormalizeLegacyContracts();
             JournalProjectionIsDeterministicAndValidated();
             BuildLabOutputsAreDeterministicAndLocalized();
             ContentInstallPreviewsEmitLocalizationKeys();
@@ -298,6 +304,261 @@ internal static class CoreEngineTests
                 RuntimeLockDiffChangeKinds.ProviderBindingChanged
             ],
             "Runtime-lock diffs should emit changes in a deterministic kind order.");
+    }
+
+    private static void RuntimeInspectorProjectionIsDeterministicAcrossPackAndBindingOrder()
+    {
+        DefaultRuntimeInspectorService service = new(
+            new RulesetPluginRegistry([new Sr5RulesetPlugin()]),
+            new RuleProfileRegistryServiceStub(
+            [
+                CreateDeterministicInspectorProfile(
+                    "deterministic-a",
+                    [
+                        new RuleProfilePackSelection(new ArtifactVersionReference("house-rules", "1.0.0"), Required: true, EnabledByDefault: true),
+                        new RuleProfilePackSelection(new ArtifactVersionReference("house", "1.0.0"), Required: false, EnabledByDefault: true),
+                        new RuleProfilePackSelection(new ArtifactVersionReference("missing-zeta", "1.0.0"), Required: false, EnabledByDefault: false),
+                        new RuleProfilePackSelection(new ArtifactVersionReference("missing-alpha", "1.0.0"), Required: false, EnabledByDefault: false)
+                    ],
+                    new Dictionary<string, string>(StringComparer.Ordinal)
+                    {
+                        [RulePackCapabilityIds.ValidateCharacter] = "house-rules/validate.character",
+                        [RulePackCapabilityIds.ContentCatalog] = "house-rules/content.catalog"
+                    }),
+                CreateDeterministicInspectorProfile(
+                    "deterministic-b",
+                    [
+                        new RuleProfilePackSelection(new ArtifactVersionReference("missing-alpha", "1.0.0"), Required: false, EnabledByDefault: false),
+                        new RuleProfilePackSelection(new ArtifactVersionReference("house", "1.0.0"), Required: false, EnabledByDefault: true),
+                        new RuleProfilePackSelection(new ArtifactVersionReference("missing-zeta", "1.0.0"), Required: false, EnabledByDefault: false),
+                        new RuleProfilePackSelection(new ArtifactVersionReference("house-rules", "1.0.0"), Required: true, EnabledByDefault: true)
+                    ],
+                    new Dictionary<string, string>(StringComparer.Ordinal)
+                    {
+                        [RulePackCapabilityIds.ContentCatalog] = "house-rules/content.catalog",
+                        [RulePackCapabilityIds.ValidateCharacter] = "house-rules/validate.character"
+                    })
+            ]),
+            new RulePackRegistryServiceStub(
+            [
+                CreateRulePackEntry(
+                    packId: "house-rules",
+                    capabilities:
+                    [
+                        new RulePackCapabilityDescriptor(RulePackCapabilityIds.ValidateCharacter, RulePackAssetKinds.Lua, RulePackAssetModes.AddProvider),
+                        new RulePackCapabilityDescriptor(RulePackCapabilityIds.ContentCatalog, RulePackAssetKinds.Xml, RulePackAssetModes.MergeCatalog)
+                    ]),
+                CreateRulePackEntry(
+                    packId: "house",
+                    capabilities:
+                    [
+                        new RulePackCapabilityDescriptor(RulePackCapabilityIds.SessionQuickActions, RulePackAssetKinds.Lua, RulePackAssetModes.AddProvider)
+                    ])
+            ]));
+
+        RuntimeInspectorProjection? projectionA = service.GetProfileProjection(OwnerScope.LocalSingleUser, "deterministic-a", RulesetDefaults.Sr5);
+        RuntimeInspectorProjection? projectionB = service.GetProfileProjection(OwnerScope.LocalSingleUser, "deterministic-b", RulesetDefaults.Sr5);
+
+        AssertEx.NotNull(projectionA, "Runtime inspector should resolve the first deterministic profile.");
+        AssertEx.NotNull(projectionB, "Runtime inspector should resolve the second deterministic profile.");
+
+        AssertEx.SequenceEqual(
+            projectionA!.ResolvedRulePacks.Select(static pack => pack.RulePack.Id),
+            projectionB!.ResolvedRulePacks.Select(static pack => pack.RulePack.Id),
+            "Runtime inspector should sort resolved RulePacks deterministically.");
+        AssertEx.SequenceEqual(
+            projectionA.ResolvedRulePacks.Select(static pack => string.Join(",", pack.CapabilityIds)),
+            projectionB.ResolvedRulePacks.Select(static pack => string.Join(",", pack.CapabilityIds)),
+            "Runtime inspector should sort RulePack capability ids deterministically.");
+        AssertEx.SequenceEqual(
+            projectionA.ProviderBindings.Select(static binding => $"{binding.CapabilityId}|{binding.ProviderId}|{binding.PackId}"),
+            projectionB.ProviderBindings.Select(static binding => $"{binding.CapabilityId}|{binding.ProviderId}|{binding.PackId}"),
+            "Runtime inspector should sort provider bindings and resolve pack ids deterministically.");
+        AssertEx.True(
+            projectionA.ProviderBindings.All(static binding => string.Equals(binding.PackId, "house-rules", StringComparison.Ordinal)),
+            "Runtime inspector should prefer the longest matching RulePack id when resolving provider provenance.");
+        AssertEx.SequenceEqual(
+            projectionA.CompatibilityDiagnostics.Select(static diagnostic => diagnostic.MessageParameters![0].Value.StringValue),
+            ["missing-alpha", "missing-zeta"],
+            "Runtime inspector should emit missing-pack diagnostics in deterministic pack order.");
+        AssertEx.SequenceEqual(
+            projectionA.MigrationPreview.Select(static item => item.SubjectId),
+            ["house", "house-rules", "missing-alpha", "missing-zeta"],
+            "Runtime inspector migration preview should follow deterministic RulePack ordering.");
+    }
+
+    private static void AiExplainProjectionEmitsStructuredProvenance()
+    {
+        DefaultAiExplainService service = new(
+            new AiDigestServiceStub(),
+            new RulesetPluginRegistry([new ExplainTestRulesetPlugin()]));
+
+        AiExplainValueProjection? projection = service.GetExplainValue(
+            OwnerScope.LocalSingleUser,
+            new AiExplainValueQuery(
+                RuntimeFingerprint: "sha256:test-runtime",
+                CharacterId: "char-1",
+                CapabilityId: RulePackCapabilityIds.DeriveStat,
+                ExplainEntryId: "initiative.total",
+                RulesetId: RulesetDefaults.Sr5));
+
+        AssertEx.NotNull(projection, "Explain service should resolve the seeded explain projection.");
+        AssertEx.NotNull(projection!.Provenance, "Explain projections should expose structured provenance.");
+        AssertEx.Equal(
+            "official.sr5.ops",
+            projection.Provenance!.ProfileId,
+            "Explain provenance should carry the active profile id when a session profile is available.");
+        AssertEx.Equal(
+            "combat-pack",
+            projection.Provenance.PackId,
+            "Explain provenance should resolve the bound RulePack id.");
+        AssertEx.True(
+            projection.Evidence is { Count: >= 5 },
+            "Explain projections should emit machine-readable evidence pointers.");
+        AssertEx.True(
+            projection.Evidence!.Any(pointer =>
+                string.Equals(pointer.Kind, RulesetEvidencePointerKinds.RuleReference, StringComparison.Ordinal)
+                && string.Equals(pointer.Pointer, "sr5.combat.initiative", StringComparison.Ordinal)),
+            "Explain projections should surface rule-reference evidence from the underlying trace.");
+        AssertEx.True(
+            projection.Trace is { Count: >= 2 },
+            "Explain projections should emit structured trace steps.");
+        IReadOnlyList<AiExplainTraceStepProjection> trace = projection.Trace!;
+        AssertEx.True(
+            trace.Any(step =>
+                string.Equals(step.Category, "derived-value", StringComparison.Ordinal)
+                && string.Equals(step.RuleId, "sr5.combat.initiative", StringComparison.Ordinal)
+                && step.Evidence is { Count: > 0 }),
+            "Explain trace steps should preserve step-level provenance and evidence.");
+        AssertEx.True(
+            trace.Any(step =>
+                string.Equals(step.Category, "diagnostic", StringComparison.Ordinal)
+                && string.Equals(step.ExplanationKey, "ruleset.diagnostic.soft-cap", StringComparison.Ordinal)),
+            "Explain projections should normalize diagnostics into keyed trace steps.");
+    }
+
+    private static void LocalizationFallbackHelpersNormalizeLegacyContracts()
+    {
+        RulesetExplainParameter[] parameters =
+        [
+            new("profileId", RulesetCapabilityBridge.FromObject("official.sr5.core"))
+        ];
+
+        RulesetCapabilityDiagnostic capabilityDiagnostic = new(
+            Code: "experimental",
+            Message: "ruleset.capability.experimental",
+            MessageParameters: parameters);
+        AssertEx.Equal(
+            "ruleset.capability.experimental",
+            RulesetCapabilityDiagnosticLocalization.ResolveMessageKey(capabilityDiagnostic),
+            "Capability diagnostics should fall back to their message when a key is omitted.");
+        AssertEx.Equal(
+            1,
+            RulesetCapabilityDiagnosticLocalization.ResolveMessageParameters(capabilityDiagnostic).Count,
+            "Capability diagnostics should expose deterministic parameter collections.");
+
+        RuntimeLockCompatibilityDiagnostic compatibilityDiagnostic = new(
+            State: RuntimeLockCompatibilityStates.Compatible,
+            Message: "runtime.lock.compatibility.compatible",
+            RequiredRulesetId: RulesetDefaults.Sr5,
+            RequiredRuntimeFingerprint: "sha256:runtime");
+        AssertEx.Equal(
+            "runtime.lock.compatibility.compatible",
+            RuntimeLockContractLocalization.ResolveCompatibilityMessageKey(compatibilityDiagnostic),
+            "Runtime lock compatibility diagnostics should fall back to their message when a key is omitted.");
+        AssertEx.Equal(
+            0,
+            RuntimeLockContractLocalization.ResolveCompatibilityMessageParameters(compatibilityDiagnostic).Count,
+            "Runtime lock compatibility diagnostics should normalize missing parameter lists to empty collections.");
+
+        RuntimeInspectorWarning warning = new(
+            Kind: RuntimeInspectorWarningKinds.Trust,
+            Severity: RuntimeInspectorWarningSeverityLevels.Info,
+            Message: "runtime.inspector.warning.trust.local-only");
+        AssertEx.Equal(
+            "runtime.inspector.warning.trust.local-only",
+            RuntimeInspectorContractLocalization.ResolveMessageKey(warning),
+            "Runtime inspector warnings should fall back to their message when a key is omitted.");
+        AssertEx.Equal(
+            0,
+            RuntimeInspectorContractLocalization.ResolveMessageParameters(warning).Count,
+            "Runtime inspector warnings should normalize missing parameter lists to empty collections.");
+
+        RuntimeMigrationPreviewItem migrationPreview = new(
+            Kind: RuntimeMigrationPreviewChangeKinds.RulePackAdded,
+            Summary: "runtime.inspector.preview.rulepack-added");
+        AssertEx.Equal(
+            "runtime.inspector.preview.rulepack-added",
+            RuntimeInspectorContractLocalization.ResolveSummaryKey(migrationPreview),
+            "Runtime migration preview items should fall back to their summary when a key is omitted.");
+        AssertEx.Equal(
+            0,
+            RuntimeInspectorContractLocalization.ResolveSummaryParameters(migrationPreview).Count,
+            "Runtime migration preview items should normalize missing parameter lists to empty collections.");
+
+        RulePackResolutionDiagnostic resolutionDiagnostic = new(
+            Kind: RulePackResolutionDiagnosticKinds.MissingDependency,
+            Severity: RulePackResolutionSeverityLevels.Warning,
+            SubjectId: "house-rules",
+            Message: "rulepack.compile.missing-dependency");
+        AssertEx.Equal(
+            "rulepack.compile.missing-dependency",
+            RulePackResolutionDiagnosticLocalization.ResolveMessageKey(resolutionDiagnostic),
+            "RulePack resolution diagnostics should fall back to their message when a key is omitted.");
+        AssertEx.Equal(
+            0,
+            RulePackResolutionDiagnosticLocalization.ResolveMessageParameters(resolutionDiagnostic).Count,
+            "RulePack resolution diagnostics should normalize missing parameter lists to empty collections.");
+
+        BuildKitValidationIssue buildKitIssue = new(
+            Kind: BuildKitValidationIssueKinds.MissingRulePack,
+            Message: "buildkit.validation.missing-rulepack");
+        AssertEx.Equal(
+            "buildkit.validation.missing-rulepack",
+            BuildKitContractLocalization.ResolveIssueMessageKey(buildKitIssue),
+            "Build kit validation issues should fall back to their message when a key is omitted.");
+        AssertEx.Equal(
+            0,
+            BuildKitContractLocalization.ResolveIssueMessageParameters(buildKitIssue).Count,
+            "Build kit validation issues should normalize missing parameter lists to empty collections.");
+
+        RuntimeLockInstallPreviewItem runtimeLockPreview = new(
+            Kind: RuntimeLockInstallPreviewChangeKinds.RuntimeLockPinned,
+            Summary: "runtime.lock.install.preview.runtime-lock-pinned",
+            SubjectId: "sha256:runtime");
+        AssertEx.Equal(
+            "runtime.lock.install.preview.runtime-lock-pinned",
+            RuntimeLockContractLocalization.ResolveInstallPreviewSummaryKey(runtimeLockPreview),
+            "Runtime lock install previews should fall back to their summary when a key is omitted.");
+        AssertEx.Equal(
+            0,
+            RuntimeLockContractLocalization.ResolveInstallPreviewSummaryParameters(runtimeLockPreview).Count,
+            "Runtime lock install previews should normalize missing parameter lists to empty collections.");
+
+        RulePackInstallPreviewItem rulePackPreview = new(
+            Kind: RulePackInstallPreviewChangeKinds.InstallStateChanged,
+            Summary: "rulepack.install.preview.install-state-changed",
+            SubjectId: "house-rules");
+        AssertEx.Equal(
+            "rulepack.install.preview.install-state-changed",
+            RulePackInstallContractLocalization.ResolvePreviewSummaryKey(rulePackPreview),
+            "RulePack install previews should fall back to their summary when a key is omitted.");
+        AssertEx.Equal(
+            0,
+            RulePackInstallContractLocalization.ResolvePreviewSummaryParameters(rulePackPreview).Count,
+            "RulePack install previews should normalize missing parameter lists to empty collections.");
+
+        RuleProfilePreviewItem ruleProfilePreview = new(
+            Kind: RuleProfilePreviewChangeKinds.RuntimeLockPinned,
+            Summary: "ruleprofile.preview.runtime-lock-pinned");
+        AssertEx.Equal(
+            "ruleprofile.preview.runtime-lock-pinned",
+            RuleProfileContractLocalization.ResolvePreviewSummaryKey(ruleProfilePreview),
+            "Rule profile previews should fall back to their summary when a key is omitted.");
+        AssertEx.Equal(
+            0,
+            RuleProfileContractLocalization.ResolvePreviewSummaryParameters(ruleProfilePreview).Count,
+            "Rule profile previews should normalize missing parameter lists to empty collections.");
     }
 
     private static void JournalProjectionIsDeterministicAndValidated()
@@ -750,6 +1011,48 @@ internal static class CoreEngineTests
             RegistryEntrySourceKinds.BuiltInCoreProfile);
     }
 
+    private static RuleProfileRegistryEntry CreateDeterministicInspectorProfile(
+        string profileId,
+        IReadOnlyList<RuleProfilePackSelection> rulePacks,
+        IReadOnlyDictionary<string, string> providerBindings)
+    {
+        return new RuleProfileRegistryEntry(
+            new RuleProfileManifest(
+                ProfileId: profileId,
+                Title: $"{profileId} Title",
+                Description: "Deterministic runtime inspector profile.",
+                RulesetId: RulesetDefaults.Sr5,
+                Audience: RuleProfileAudienceKinds.General,
+                CatalogKind: RuleProfileCatalogKinds.Official,
+                RulePacks: rulePacks,
+                DefaultToggles: [],
+                RuntimeLock: new ResolvedRuntimeLock(
+                    RulesetId: RulesetDefaults.Sr5,
+                    ContentBundles:
+                    [
+                        new ContentBundleDescriptor(
+                            BundleId: "official.sr5.base",
+                            RulesetId: RulesetDefaults.Sr5,
+                            Version: "schema-1",
+                            Title: "SR5 Base",
+                            Description: "Built-in base content.",
+                            AssetPaths: ["lang/", "data/"])
+                    ],
+                    RulePacks: rulePacks.Select(static pack => pack.RulePack).ToArray(),
+                    ProviderBindings: providerBindings,
+                    EngineApiVersion: "rulepack-v1",
+                    RuntimeFingerprint: $"sha256:{profileId}"),
+                UpdateChannel: RuleProfileUpdateChannels.Stable),
+            new RuleProfilePublicationMetadata(
+                OwnerId: "local-single-user",
+                Visibility: ArtifactVisibilityModes.LocalOnly,
+                PublicationStatus: RulePackPublicationStatuses.Published,
+                Review: new RulePackReviewDecision(RulePackReviewStates.NotRequired),
+                Shares: []),
+            new ArtifactInstallState(ArtifactInstallStates.Available),
+            RegistryEntrySourceKinds.BuiltInCoreProfile);
+    }
+
     private static RulePackRegistryEntry CreateRulePackEntry(
         string packId,
         IReadOnlyList<RulePackCapabilityDescriptor> capabilities)
@@ -909,6 +1212,240 @@ internal static class CoreEngineTests
         public RuntimeLockInstallPreviewReceipt? Preview(OwnerScope owner, string lockId, RuleProfileApplyTarget target, string? rulesetId = null) => null;
 
         public RuntimeLockInstallReceipt? Apply(OwnerScope owner, string lockId, RuleProfileApplyTarget target, string? rulesetId = null) => null;
+    }
+
+    private sealed class AiDigestServiceStub : IAiDigestService
+    {
+        public AiRuntimeSummaryProjection? GetRuntimeSummary(OwnerScope owner, string runtimeFingerprint, string? rulesetId = null)
+        {
+            return new AiRuntimeSummaryProjection(
+                RuntimeFingerprint: "sha256:test-runtime",
+                RulesetId: RulesetDefaults.Sr5,
+                Title: "Seattle Ops Runtime",
+                CatalogKind: RuntimeLockCatalogKinds.Saved,
+                EngineApiVersion: "rulepack-v1",
+                ContentBundles: ["official.sr5.base@schema-1"],
+                RulePacks: ["combat-pack@1.2.0", "house-rules@1.0.0"],
+                ProviderBindings: new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    [RulePackCapabilityIds.DeriveStat] = "combat-pack/derive.initiative"
+                },
+                Visibility: ArtifactVisibilityModes.LocalOnly,
+                Description: "Seeded runtime for explain tests.");
+        }
+
+        public AiCharacterDigestProjection? GetCharacterDigest(OwnerScope owner, string characterId)
+        {
+            return new AiCharacterDigestProjection(
+                CharacterId: "char-1",
+                DisplayName: "Rin",
+                RulesetId: RulesetDefaults.Sr5,
+                RuntimeFingerprint: "sha256:test-runtime",
+                Summary: new CharacterFileSummary(
+                    Name: "Rin",
+                    Alias: "Ghost",
+                    Metatype: "Human",
+                    BuildMethod: "priority",
+                    CreatedVersion: "5.0",
+                    AppVersion: "test",
+                    Karma: 23,
+                    Nuyen: 1500m,
+                    Created: true),
+                LastUpdatedUtc: DateTimeOffset.UnixEpoch.AddDays(1),
+                HasSavedWorkspace: true);
+        }
+
+        public AiSessionDigestProjection? GetSessionDigest(OwnerScope owner, string characterId)
+        {
+            return new AiSessionDigestProjection(
+                CharacterId: "char-1",
+                DisplayName: "Rin",
+                RulesetId: RulesetDefaults.Sr5,
+                RuntimeFingerprint: "sha256:test-runtime",
+                SelectionState: SessionRuntimeSelectionStates.Selected,
+                SessionReady: true,
+                BundleFreshness: SessionRuntimeBundleFreshnessStates.Current,
+                RequiresBundleRefresh: false,
+                ProfileId: "official.sr5.ops",
+                ProfileTitle: "Official SR5 Ops");
+        }
+    }
+
+    private sealed class ExplainTestRulesetPlugin : IRulesetPlugin
+    {
+        public ExplainTestRulesetPlugin()
+        {
+            Capabilities = new ExplainTestCapabilityHost();
+            Rules = new RulesetRuleHostCapabilityAdapter(Capabilities);
+            Scripts = new RulesetScriptHostCapabilityAdapter(Capabilities);
+        }
+
+        public RulesetId Id { get; } = new(RulesetDefaults.Sr5);
+
+        public string DisplayName => "Explain Test Ruleset";
+
+        public IRulesetSerializer Serializer { get; } = new ExplainTestSerializer();
+
+        public IRulesetShellDefinitionProvider ShellDefinitions { get; } = new ExplainTestShellDefinitions();
+
+        public IRulesetCatalogProvider Catalogs { get; } = new ExplainTestCatalogs();
+
+        public IRulesetCapabilityDescriptorProvider CapabilityDescriptors { get; } = new ExplainTestCapabilityDescriptors();
+
+        public IRulesetCapabilityHost Capabilities { get; }
+
+        public IRulesetRuleHost Rules { get; }
+
+        public IRulesetScriptHost Scripts { get; }
+    }
+
+    private sealed class ExplainTestSerializer : IRulesetSerializer
+    {
+        public RulesetId RulesetId { get; } = new(RulesetDefaults.Sr5);
+
+        public int SchemaVersion => 1;
+
+        public WorkspacePayloadEnvelope Wrap(string payloadKind, string payload)
+            => new(RulesetDefaults.Sr5, SchemaVersion, payloadKind, payload);
+    }
+
+    private sealed class ExplainTestShellDefinitions : IRulesetShellDefinitionProvider
+    {
+        public IReadOnlyList<Chummer.Contracts.Presentation.AppCommandDefinition> GetCommands() => [];
+
+        public IReadOnlyList<Chummer.Contracts.Presentation.NavigationTabDefinition> GetNavigationTabs() => [];
+    }
+
+    private sealed class ExplainTestCatalogs : IRulesetCatalogProvider
+    {
+        public IReadOnlyList<Chummer.Contracts.Presentation.WorkspaceSurfaceActionDefinition> GetWorkspaceActions() => [];
+    }
+
+    private sealed class ExplainTestCapabilityDescriptors : IRulesetCapabilityDescriptorProvider
+    {
+        public IReadOnlyList<RulesetCapabilityDescriptor> GetCapabilityDescriptors()
+        {
+            return
+            [
+                new RulesetCapabilityDescriptor(
+                    CapabilityId: RulePackCapabilityIds.DeriveStat,
+                    InvocationKind: RulesetCapabilityInvocationKinds.Rule,
+                    Title: "Initiative",
+                    Explainable: true,
+                    SessionSafe: true,
+                    DefaultGasBudget: new RulesetGasBudget(1000, 5000, 1024),
+                    MaximumGasBudget: new RulesetGasBudget(2000, 10000, 2048),
+                    TitleKey: "ruleset.capability.derive.stat.title")
+            ];
+        }
+    }
+
+    private sealed class ExplainTestCapabilityHost : IRulesetCapabilityHost
+    {
+        public ValueTask<RulesetCapabilityInvocationResult> InvokeAsync(RulesetCapabilityInvocationRequest request, CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            return ValueTask.FromResult(new RulesetCapabilityInvocationResult(
+                Success: true,
+                Output: RulesetCapabilityBridge.FromObject(14),
+                Diagnostics:
+                [
+                    new RulesetCapabilityDiagnostic(
+                        Code: "soft-cap",
+                        Message: "ruleset.diagnostic.soft-cap",
+                        Severity: RulesetCapabilityDiagnosticSeverities.Warning,
+                        MessageKey: "ruleset.diagnostic.soft-cap",
+                        MessageParameters:
+                        [
+                            new RulesetExplainParameter("capabilityId", RulesetCapabilityBridge.FromObject(request.CapabilityId))
+                        ])
+                ],
+                Explain: new RulesetExplainTrace(
+                    TargetKey: "initiative.total",
+                    FinalValue: RulesetCapabilityBridge.FromObject(14),
+                    SummaryKey: "ruleset.explain.summary.derived-value",
+                    SummaryParameters:
+                    [
+                        new RulesetExplainParameter("targetKey", RulesetCapabilityBridge.FromObject("initiative.total")),
+                        new RulesetExplainParameter("finalValue", RulesetCapabilityBridge.FromObject(14))
+                    ],
+                    Providers:
+                    [
+                        new RulesetProviderTrace(
+                            ProviderId: "combat-pack/derive.initiative",
+                            CapabilityId: request.CapabilityId,
+                            PackId: "combat-pack",
+                            Success: true,
+                            Steps:
+                            [
+                                new RulesetTraceStep(
+                                    ProviderId: "combat-pack/derive.initiative",
+                                    CapabilityId: request.CapabilityId,
+                                    PackId: "combat-pack",
+                                    ExplanationKey: "ruleset.trace.initiative.base",
+                                    ExplanationParameters:
+                                    [
+                                        new RulesetExplainParameter("reaction", RulesetCapabilityBridge.FromObject(5)),
+                                        new RulesetExplainParameter("intuition", RulesetCapabilityBridge.FromObject(4))
+                                    ],
+                                    Category: "derived-value",
+                                    Modifier: 9m,
+                                    Certain: true,
+                                    RuleId: "sr5.combat.initiative",
+                                    Evidence:
+                                    [
+                                        new RulesetEvidencePointer(
+                                            Kind: RulesetEvidencePointerKinds.RuleReference,
+                                            Pointer: "sr5.combat.initiative",
+                                            LabelKey: "ruleset.explain.evidence.rule-reference",
+                                            LabelParameters:
+                                            [
+                                                new RulesetExplainParameter("ruleId", RulesetCapabilityBridge.FromObject("sr5.combat.initiative"))
+                                            ],
+                                            ProviderId: "combat-pack/derive.initiative",
+                                            PackId: "combat-pack",
+                                            RuleId: "sr5.combat.initiative")
+                                    ])
+                            ],
+                            GasUsage: new RulesetGasUsage(100, 220, 4096),
+                            Evidence:
+                            [
+                                new RulesetEvidencePointer(
+                                    Kind: RulesetEvidencePointerKinds.RulePack,
+                                    Pointer: "combat-pack",
+                                    LabelKey: "ruleset.explain.evidence.rulepack",
+                                    LabelParameters:
+                                    [
+                                        new RulesetExplainParameter("packId", RulesetCapabilityBridge.FromObject("combat-pack"))
+                                    ],
+                                    ProviderId: "combat-pack/derive.initiative",
+                                    PackId: "combat-pack")
+                            ])
+                    ],
+                    AggregateGasUsage: new RulesetGasUsage(100, 220, 4096),
+                    RuntimeFingerprint: "sha256:test-runtime",
+                    ProfileId: "official.sr5.ops",
+                    Evidence:
+                    [
+                        new RulesetEvidencePointer(
+                            Kind: RulesetEvidencePointerKinds.RuntimeLock,
+                            Pointer: "sha256:test-runtime",
+                            LabelKey: "ruleset.explain.evidence.runtime-lock",
+                            LabelParameters:
+                            [
+                                new RulesetExplainParameter("runtimeFingerprint", RulesetCapabilityBridge.FromObject("sha256:test-runtime"))
+                            ]),
+                        new RulesetEvidencePointer(
+                            Kind: RulesetEvidencePointerKinds.RuleProfile,
+                            Pointer: "official.sr5.ops",
+                            LabelKey: "ruleset.explain.evidence.rule-profile",
+                            LabelParameters:
+                            [
+                                new RulesetExplainParameter("profileId", RulesetCapabilityBridge.FromObject("official.sr5.ops"))
+                            ])
+                    ])));
+        }
     }
 
     private static string ToComparableChange(RuntimeLockDiffChange change)
