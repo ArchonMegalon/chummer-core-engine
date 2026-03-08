@@ -53,7 +53,9 @@ public sealed record HubProjectCapabilityDescriptorProjection(
     string? ProviderId = null,
     string? PackId = null,
     string? AssetKind = null,
-    string? AssetMode = null);
+    string? AssetMode = null,
+    string? TitleKey = null,
+    IReadOnlyList<RulesetExplainParameter>? TitleParameters = null);
 
 public sealed record HubProjectDetailProjection(
     HubCatalogItem Summary,

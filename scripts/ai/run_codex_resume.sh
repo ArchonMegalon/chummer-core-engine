@@ -10,6 +10,7 @@ BOOT_FILE=".codex.resume.boot.txt"
   printf -- '- instructions.md\n'
   printf -- '- .agent-memory.md\n'
   printf -- '- AGENT_MEMORY.md\n'
+  printf -- '- audit.md\n'
   printf -- '- %s\n' "chummer-core-engine.design.v2.md"
   if [ -f AGENTS.md ]; then printf -- '- AGENTS.md\n'; fi
   printf '\n'
@@ -19,8 +20,8 @@ BOOT_FILE=".codex.resume.boot.txt"
   printf '\n\n'
   cat AGENT_MEMORY.md
   printf '\n\n'
-  cat "/docker/chummercomplete/core.day1.prompt.txt"
-  printf '\n\nInspect current repo state before changing anything. Do not repeat already completed work. Continue silently until fully complete or blocked on missing info/permissions.\n'
+  cat audit.md
+  printf '\n\nInspect current repo state before changing anything. Do not repeat already completed work. Continue silently through the queue until fully complete or truly blocked on missing info/permissions.\n'
 } > "$BOOT_FILE"
 
 HELP_OUT="$(codex --help 2>&1 || true)"

@@ -78,13 +78,17 @@ public class RuntimeInspectorServiceTests
         Assert.IsTrue(projection.CapabilityDescriptors.Any(descriptor =>
             string.Equals(descriptor.CapabilityId, RulePackCapabilityIds.DeriveStat, StringComparison.Ordinal)
             && string.Equals(descriptor.InvocationKind, RulesetCapabilityInvocationKinds.Rule, StringComparison.Ordinal)
+            && string.Equals(descriptor.TitleKey, "ruleset.capability.derive.stat.title", StringComparison.Ordinal)
             && string.IsNullOrWhiteSpace(descriptor.ProviderId)));
         Assert.IsTrue(projection.CapabilityDescriptors.Any(descriptor =>
             string.Equals(descriptor.CapabilityId, RulePackCapabilityIds.SessionQuickActions, StringComparison.Ordinal)
+            && string.Equals(descriptor.TitleKey, "ruleset.capability.session.quick-actions.title", StringComparison.Ordinal)
             && descriptor.SessionSafe
             && string.IsNullOrWhiteSpace(descriptor.ProviderId)));
         Assert.IsTrue(projection.Warnings.Any(warning => string.Equals(warning.Kind, RuntimeInspectorWarningKinds.Trust, StringComparison.Ordinal)));
-        Assert.IsTrue(projection.CompatibilityDiagnostics.Any(diagnostic => string.Equals(diagnostic.State, RuntimeLockCompatibilityStates.Compatible, StringComparison.Ordinal)));
+        Assert.IsTrue(projection.CompatibilityDiagnostics.Any(diagnostic =>
+            string.Equals(diagnostic.State, RuntimeLockCompatibilityStates.Compatible, StringComparison.Ordinal)
+            && string.Equals(diagnostic.MessageKey, "runtime.lock.compatibility.compatible", StringComparison.Ordinal)));
     }
 
     [TestMethod]

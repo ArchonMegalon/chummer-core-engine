@@ -2687,7 +2687,7 @@ public class RulesetSeamContractsTests
                 }),
             Diagnostics:
             [
-                new RulesetCapabilityDiagnostic("rule.ok", "rule ok")
+                new RulesetCapabilityDiagnostic("rule.ok", "rule ok", MessageKey: "rule.ok")
             ]);
         RulesetRuleEvaluationResult bridgedRuleResult = RulesetCapabilityBridge.ToRuleResult(typedRuleResult);
 
@@ -2714,7 +2714,7 @@ public class RulesetSeamContractsTests
             Output: null,
             Diagnostics:
             [
-                new RulesetCapabilityDiagnostic("script.fail", "script failed", RulesetCapabilityDiagnosticSeverities.Error)
+                new RulesetCapabilityDiagnostic("script.fail", "script failed", RulesetCapabilityDiagnosticSeverities.Error, MessageKey: "script.fail")
             ]);
         RulesetScriptExecutionResult bridgedScriptResult = RulesetCapabilityBridge.ToScriptResult(typedScriptResult);
 
@@ -2733,7 +2733,9 @@ public class RulesetSeamContractsTests
             Explainable: true,
             SessionSafe: true,
             DefaultGasBudget: new RulesetGasBudget(1_000, 5_000, 1_048_576, TimeSpan.FromSeconds(1)),
-            MaximumGasBudget: new RulesetGasBudget(5_000, 20_000, 4_194_304, TimeSpan.FromSeconds(2)));
+            MaximumGasBudget: new RulesetGasBudget(5_000, 20_000, 4_194_304, TimeSpan.FromSeconds(2)),
+            TitleKey: "ruleset.capability.session.quick-actions.title",
+            TitleParameters: []);
 
         Assert.AreEqual(RulePackCapabilityIds.SessionQuickActions, descriptor.CapabilityId);
         Assert.AreEqual(RulesetCapabilityInvocationKinds.Script, descriptor.InvocationKind);
@@ -2741,6 +2743,9 @@ public class RulesetSeamContractsTests
         Assert.IsTrue(descriptor.SessionSafe);
         Assert.AreEqual(1_000, descriptor.DefaultGasBudget.ProviderInstructionLimit);
         Assert.AreEqual(20_000, descriptor.MaximumGasBudget?.RequestInstructionLimit);
+        Assert.AreEqual("ruleset.capability.session.quick-actions.title", descriptor.TitleKey);
+        Assert.AreEqual("ruleset.capability.session.quick-actions.title", RulesetCapabilityDescriptorLocalization.ResolveTitleKey(descriptor));
+        Assert.AreEqual(0, RulesetCapabilityDescriptorLocalization.ResolveTitleParameters(descriptor).Count);
     }
 
     [TestMethod]
@@ -2823,6 +2828,7 @@ public class RulesetSeamContractsTests
         Assert.IsGreaterThan(0, plugin.Catalogs.GetWorkspaceActions().Count);
         Assert.IsTrue(plugin.CapabilityDescriptors.GetCapabilityDescriptors().Any(descriptor => string.Equals(descriptor.CapabilityId, RulePackCapabilityIds.DeriveStat, StringComparison.Ordinal)));
         Assert.IsTrue(plugin.CapabilityDescriptors.GetCapabilityDescriptors().Any(static descriptor => descriptor.SessionSafe));
+        Assert.IsTrue(plugin.CapabilityDescriptors.GetCapabilityDescriptors().All(static descriptor => !string.IsNullOrWhiteSpace(descriptor.TitleKey)));
 
         RulesetCapabilityInvocationResult capabilityResult = await plugin.Capabilities.InvokeAsync(
             new RulesetCapabilityInvocationRequest(
@@ -2895,6 +2901,7 @@ public class RulesetSeamContractsTests
         CollectionAssert.Contains(
             capabilityResult.Diagnostics.Select(static diagnostic => diagnostic.Message).ToArray(),
             "SR6 rules engine is not implemented; this ruleset remains experimental.");
+        Assert.AreEqual("sr6.rule.experimental", capabilityResult.Diagnostics[0].MessageKey);
 
         WorkspaceDownloadReceipt download = codec.BuildDownload(
             new CharacterWorkspaceId("ws-sr6"),
@@ -2920,6 +2927,11 @@ public class RulesetSeamContractsTests
         Assert.IsFalse(scriptResult.Success);
         Assert.IsEmpty(scriptResult.Outputs);
         StringAssert.Contains(scriptResult.Error, "SR6 script host is not implemented");
+        Assert.AreEqual(
+            "ruleset.capability.session.quick-actions.title",
+            plugin.CapabilityDescriptors.GetCapabilityDescriptors()
+                .Single(descriptor => string.Equals(descriptor.CapabilityId, RulePackCapabilityIds.SessionQuickActions, StringComparison.Ordinal))
+                .TitleKey);
     }
 
     [TestMethod]
@@ -2963,6 +2975,7 @@ public class RulesetSeamContractsTests
         CollectionAssert.Contains(
             capabilityResult.Diagnostics.Select(static diagnostic => diagnostic.Message).ToArray(),
             "SR4 rules engine is not implemented; this ruleset remains experimental.");
+        Assert.AreEqual("sr4.rule.experimental", capabilityResult.Diagnostics[0].MessageKey);
 
         WorkspaceDownloadReceipt download = codec.BuildDownload(
             new CharacterWorkspaceId("ws-sr4"),
@@ -2988,6 +3001,11 @@ public class RulesetSeamContractsTests
         Assert.IsFalse(scriptResult.Success);
         Assert.IsEmpty(scriptResult.Outputs);
         StringAssert.Contains(scriptResult.Error, "SR4 script host is not implemented");
+        Assert.AreEqual(
+            "ruleset.capability.session.quick-actions.title",
+            plugin.CapabilityDescriptors.GetCapabilityDescriptors()
+                .Single(descriptor => string.Equals(descriptor.CapabilityId, RulePackCapabilityIds.SessionQuickActions, StringComparison.Ordinal))
+                .TitleKey);
     }
 
     [TestMethod]

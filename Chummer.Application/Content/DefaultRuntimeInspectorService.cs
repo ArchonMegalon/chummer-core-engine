@@ -94,7 +94,9 @@ public sealed class DefaultRuntimeInspectorService : IRuntimeInspectorService
                     DefaultGasBudget: descriptor.DefaultGasBudget,
                     MaximumGasBudget: descriptor.MaximumGasBudget,
                     ProviderId: providerId,
-                    PackId: providerId is null ? null : TryResolvePackId(providerId, packIds));
+                    PackId: providerId is null ? null : TryResolvePackId(providerId, packIds),
+                    TitleKey: RulesetCapabilityDescriptorLocalization.ResolveTitleKey(descriptor),
+                    TitleParameters: RulesetCapabilityDescriptorLocalization.ResolveTitleParameters(descriptor));
             })
             .ToArray();
     }
@@ -127,7 +129,15 @@ public sealed class DefaultRuntimeInspectorService : IRuntimeInspectorService
                     State: RuntimeLockCompatibilityStates.MissingPack,
                     Message: $"Required RulePack '{selection.RulePack.Id}' is not present in the current registry.",
                     RequiredRulesetId: profile.Manifest.RulesetId,
-                    RequiredRuntimeFingerprint: profile.Manifest.RuntimeLock.RuntimeFingerprint));
+                    RequiredRuntimeFingerprint: profile.Manifest.RuntimeLock.RuntimeFingerprint,
+                    MessageKey: "runtime.lock.compatibility.missing-pack",
+                    MessageParameters:
+                    [
+                        Param("packId", selection.RulePack.Id),
+                        Param("version", selection.RulePack.Version),
+                        Param("rulesetId", profile.Manifest.RulesetId),
+                        Param("runtimeFingerprint", profile.Manifest.RuntimeLock.RuntimeFingerprint)
+                    ]));
             }
         }
 
@@ -137,7 +147,13 @@ public sealed class DefaultRuntimeInspectorService : IRuntimeInspectorService
                 State: RuntimeLockCompatibilityStates.Compatible,
                 Message: "Runtime lock resolves against the current RuleProfile and RulePack catalog.",
                 RequiredRulesetId: profile.Manifest.RulesetId,
-                RequiredRuntimeFingerprint: profile.Manifest.RuntimeLock.RuntimeFingerprint));
+                RequiredRuntimeFingerprint: profile.Manifest.RuntimeLock.RuntimeFingerprint,
+                MessageKey: "runtime.lock.compatibility.compatible",
+                MessageParameters:
+                [
+                    Param("rulesetId", profile.Manifest.RulesetId),
+                    Param("runtimeFingerprint", profile.Manifest.RuntimeLock.RuntimeFingerprint)
+                ]));
         }
 
         return diagnostics.ToArray();

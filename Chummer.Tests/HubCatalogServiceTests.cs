@@ -82,7 +82,8 @@ public class HubCatalogServiceTests
         Assert.IsTrue(rulePack.Capabilities.Any(capability =>
             capability.CapabilityId == RulePackCapabilityIds.SessionQuickActions
             && capability.AssetMode == RulePackAssetModes.AddProvider
-            && capability.SessionSafe));
+            && capability.SessionSafe
+            && capability.TitleKey == "ruleset.capability.session.quick-actions.title"));
 
         Assert.IsNotNull(buildKit);
         Assert.AreEqual(HubCatalogItemKinds.BuildKit, buildKit.Summary.Kind);
@@ -132,7 +133,8 @@ public class HubCatalogServiceTests
         Assert.IsTrue(ruleProfile.Capabilities.Any(capability =>
             capability.CapabilityId == RulePackCapabilityIds.DeriveStat
             && capability.InvocationKind == RulesetCapabilityInvocationKinds.Rule
-            && capability.Explainable));
+            && capability.Explainable
+            && capability.TitleKey == "ruleset.capability.derive.stat.title"));
 
         Assert.IsNotNull(runtimeLock);
         Assert.AreEqual(HubCatalogItemKinds.RuntimeLock, runtimeLock.Summary.Kind);
@@ -144,7 +146,8 @@ public class HubCatalogServiceTests
         Assert.IsNotNull(runtimeLock.Capabilities);
         Assert.IsTrue(runtimeLock.Capabilities.Any(capability =>
             capability.CapabilityId == RulePackCapabilityIds.SessionQuickActions
-            && capability.SessionSafe));
+            && capability.SessionSafe
+            && capability.TitleKey == "ruleset.capability.session.quick-actions.title"));
     }
 
     private static DefaultHubCatalogService CreateService() => new(

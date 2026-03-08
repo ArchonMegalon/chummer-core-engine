@@ -12,7 +12,8 @@ internal static class SessionOverlayEventValidator
             diagnostics.Add(new RulesetCapabilityDiagnostic(
                 "session.replay.tracker.absolute-write-blocked",
                 "session.replay.tracker.absolute-write-blocked",
-                RulesetCapabilityDiagnosticSeverities.Error));
+                RulesetCapabilityDiagnosticSeverities.Error,
+                MessageKey: "session.replay.tracker.absolute-write-blocked"));
             return false;
         }
 
@@ -21,7 +22,8 @@ internal static class SessionOverlayEventValidator
             diagnostics.Add(new RulesetCapabilityDiagnostic(
                 "session.replay.absolute-write-blocked",
                 "session.replay.absolute-write-blocked",
-                RulesetCapabilityDiagnosticSeverities.Error));
+                RulesetCapabilityDiagnosticSeverities.Error,
+                MessageKey: "session.replay.absolute-write-blocked"));
             return false;
         }
 

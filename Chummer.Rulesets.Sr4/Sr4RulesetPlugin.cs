@@ -129,7 +129,8 @@ public class Sr4RulesetCapabilityDescriptorProvider : IRulesetCapabilityDescript
             Explainable: true,
             SessionSafe: false,
             DefaultGasBudget: DefaultBudget,
-            MaximumGasBudget: MaximumBudget),
+            MaximumGasBudget: MaximumBudget,
+            TitleKey: "ruleset.capability.derive.stat.title"),
         new(
             CapabilityId: RulePackCapabilityIds.SessionQuickActions,
             InvocationKind: RulesetCapabilityInvocationKinds.Script,
@@ -137,7 +138,8 @@ public class Sr4RulesetCapabilityDescriptorProvider : IRulesetCapabilityDescript
             Explainable: true,
             SessionSafe: true,
             DefaultGasBudget: DefaultBudget,
-            MaximumGasBudget: MaximumBudget)
+            MaximumGasBudget: MaximumBudget,
+            TitleKey: "ruleset.capability.session.quick-actions.title")
     ];
 
     public IReadOnlyList<RulesetCapabilityDescriptor> GetCapabilityDescriptors() => Descriptors;
@@ -157,15 +159,29 @@ public class Sr4NoOpRulesetCapabilityHost : IRulesetCapabilityHost
                 new(
                     "sr4.script.experimental",
                     $"SR4 script host is not implemented; script '{request.CapabilityId}' cannot be executed because the ruleset remains experimental.",
-                    RulesetCapabilityDiagnosticSeverities.Error)
+                    RulesetCapabilityDiagnosticSeverities.Error,
+                    MessageKey: "sr4.script.experimental",
+                    MessageParameters:
+                    [
+                        new RulesetExplainParameter("capabilityId", RulesetCapabilityBridge.FromObject(request.CapabilityId))
+                    ])
             ]
             :
             [
-                new("sr4.rule.experimental", RuleErrorMessage, RulesetCapabilityDiagnosticSeverities.Error),
+                new(
+                    "sr4.rule.experimental",
+                    RuleErrorMessage,
+                    RulesetCapabilityDiagnosticSeverities.Error,
+                    MessageKey: "sr4.rule.experimental"),
                 new(
                     "sr4.rule.unavailable",
                     $"Rule '{request.CapabilityId}' cannot be evaluated until SR4 rule providers are implemented.",
-                    RulesetCapabilityDiagnosticSeverities.Error)
+                    RulesetCapabilityDiagnosticSeverities.Error,
+                    MessageKey: "sr4.rule.unavailable",
+                    MessageParameters:
+                    [
+                        new RulesetExplainParameter("capabilityId", RulesetCapabilityBridge.FromObject(request.CapabilityId))
+                    ])
             ];
 
         return ValueTask.FromResult(new RulesetCapabilityInvocationResult(

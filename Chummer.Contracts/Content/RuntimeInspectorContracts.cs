@@ -61,7 +61,9 @@ public sealed record RuntimeInspectorCapabilityDescriptorProjection(
     RulesetGasBudget DefaultGasBudget,
     RulesetGasBudget? MaximumGasBudget = null,
     string? ProviderId = null,
-    string? PackId = null);
+    string? PackId = null,
+    string? TitleKey = null,
+    IReadOnlyList<RulesetExplainParameter>? TitleParameters = null);
 
 public sealed record RuntimeInspectorWarning(
     string Kind,

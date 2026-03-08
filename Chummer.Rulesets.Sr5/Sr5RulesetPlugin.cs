@@ -129,7 +129,8 @@ public class Sr5RulesetCapabilityDescriptorProvider : IRulesetCapabilityDescript
             Explainable: true,
             SessionSafe: false,
             DefaultGasBudget: DefaultBudget,
-            MaximumGasBudget: MaximumBudget),
+            MaximumGasBudget: MaximumBudget,
+            TitleKey: "ruleset.capability.derive.stat.title"),
         new(
             CapabilityId: RulePackCapabilityIds.SessionQuickActions,
             InvocationKind: RulesetCapabilityInvocationKinds.Script,
@@ -137,7 +138,8 @@ public class Sr5RulesetCapabilityDescriptorProvider : IRulesetCapabilityDescript
             Explainable: true,
             SessionSafe: true,
             DefaultGasBudget: DefaultBudget,
-            MaximumGasBudget: MaximumBudget)
+            MaximumGasBudget: MaximumBudget,
+            TitleKey: "ruleset.capability.session.quick-actions.title")
     ];
 
     public IReadOnlyList<RulesetCapabilityDescriptor> GetCapabilityDescriptors() => Descriptors;
@@ -147,7 +149,10 @@ public class Sr5NoOpRulesetCapabilityHost : IRulesetCapabilityHost
 {
     private static readonly IReadOnlyList<RulesetCapabilityDiagnostic> RuleDiagnostics =
     [
-        new("sr5.noop.rule", "Rule host not configured; no-op evaluation applied.")
+        new(
+            "sr5.noop.rule",
+            "Rule host not configured; no-op evaluation applied.",
+            MessageKey: "sr5.noop.rule")
     ];
 
     public ValueTask<RulesetCapabilityInvocationResult> InvokeAsync(RulesetCapabilityInvocationRequest request, CancellationToken ct)
@@ -167,7 +172,13 @@ public class Sr5NoOpRulesetCapabilityHost : IRulesetCapabilityHost
                 StringComparer.Ordinal);
 
         IReadOnlyList<RulesetCapabilityDiagnostic> diagnostics = string.Equals(request.InvocationKind, RulesetCapabilityInvocationKinds.Script, StringComparison.Ordinal)
-            ? [new("sr5.noop.script", "Script host not configured; no-op execution applied.")]
+            ?
+            [
+                new(
+                    "sr5.noop.script",
+                    "Script host not configured; no-op execution applied.",
+                    MessageKey: "sr5.noop.script")
+            ]
             : RuleDiagnostics;
 
         return ValueTask.FromResult(new RulesetCapabilityInvocationResult(

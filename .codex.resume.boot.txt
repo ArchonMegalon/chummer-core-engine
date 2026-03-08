@@ -3,32 +3,56 @@ Read these files first and obey them strictly:
 - instructions.md
 - .agent-memory.md
 - AGENT_MEMORY.md
+- audit.md
 - chummer-core-engine.design.v2.md
 - AGENTS.md
 
-# Codex Instructions
+# Codex Instructions — core engine
 
-Read these files before coding:
+## Read first
 1. instructions.md
 2. .agent-memory.md
 3. AGENT_MEMORY.md
 4. chummer-core-engine.design.v2.md
 5. AGENTS.md if present
+6. audit.md if present
 
-Global rules:
-- Inspect the current repository state before changing anything.
-- Never restart completed work blindly.
-- Continue from the repo's actual current state.
-- Never surface progress or status updates while work remains.
-- Never stop after one slice; silently continue with the next queued slice.
-- Only respond if blocked on missing information, missing permissions, explicitly told to stop, or the entire requested scope is fully complete.
-- Use only preapproved in-repo scripts.
-- If no preapproved script fits, add or edit one in scripts/ai first, then run that script.
-- Prefer scripts/ai/restore.sh, build.sh, test.sh, clean.sh, format.sh over direct host-side commands.
+## Scope
+Own:
+- rulesets, engine logic, parsing, RulePack engine-side compilation
+- runtime-lock inputs
+- structured Explain API source data
+- immutable character/workspace state
+- engine-side tests
 
-Completion rule:
-- A green build is not enough.
-- Continue until the queued slices from the design document are exhausted or you are truly blocked.
+Do not own:
+- UI frameworks
+- ASP.NET controllers
+- hub/auth/AI orchestration
+- hosted persistence
+
+## Hard boundaries
+- No Avalonia / Blazor / Portal / Hub logic
+- No cloud or LLM SDKs
+- No direct dependencies on presentation or run-services implementation
+
+## Quality rules
+- Explanations must be localization-ready: keys/codes/parameters, not baked English prose
+- Session state semantics must stay event/delta based
+- Runtime and provider ordering must be deterministic and testable
+
+## Queue
+1. Isolation and compile recovery
+2. Contract hardening
+3. Structured Explain API hardening
+4. Runtime/RulePack determinism hardening
+5. Backend primitives for Build Lab / ledger / timeline / validation / explain hooks
+6. Extract remaining hardcoded C# math into Lua script Packs.
+
+## Execution style
+Inspect current repo state first.
+Do not repeat completed work.
+Continue silently until the queue is exhausted or you are truly blocked.
 
 
 # SYSTEM DIRECTIVE: CORE ENGINE
@@ -78,6 +102,38 @@ DEPENDENCIES: Consume Chummer.Engine.Contracts and Chummer.Contracts.Primitives.
 - COMMAND: USE ONLY PREAPPROVED SCRIPTS. IF NO PREAPPROVED SCRIPT FITS, EDIT OR ADD ONE IN-REPO FIRST, THEN RUN THAT SCRIPT. DO NOT REQUEST ESCALATION. DO NOT STOP OR REPORT. SILENTLY CONTINUE UNTIL BLOCKED ON MISSING INFO/PERMISSIONS OR UNTIL EVERYTHING IS FULLY COMPLETE.
 - COMMAND: USE ONLY PREAPPROVED SCRIPTS. IF NO PREAPPROVED SCRIPT FITS, EDIT OR ADD ONE IN-REPO FIRST, THEN RUN THAT SCRIPT. DO NOT REQUEST ESCALATION. DO NOT STOP OR REPORT. SILENTLY CONTINUE UNTIL BLOCKED ON MISSING INFO/PERMISSIONS OR UNTIL EVERYTHING IS FULLY COMPLETE.
 
+# CODEX CONTINUATION POLICY
+- Inspect the current repository state before making changes.
+- Never restart completed work blindly.
+- Work the queued slices in order and silently continue from one slice to the next.
+- Never send progress updates, checkpoint replies, or status summaries while work remains.
+- Do not stop voluntarily after a green build if queued work remains.
+- Only stop and reply if:
+  1. you are blocked by missing information,
+  2. you are blocked by missing permissions,
+  3. a hard technical blocker prevents any further safe progress, or
+  4. the entire queued scope is fully complete.
+- Use only preapproved in-repo scripts first.
+- If no preapproved script fits, add or edit one in `scripts/ai/` first, then use that script.
+- Do not ask for escalation if an in-repo script can solve the problem.
+- Treat instructions.md as the authoritative execution contract.
+
+# CODEX CONTINUATION POLICY
+- Inspect the current repository state before making changes.
+- Never restart completed work blindly.
+- Work the queued slices in order and silently continue from one slice to the next.
+- Never send progress updates, checkpoint replies, or status summaries while work remains.
+- Do not stop voluntarily after a green build if queued work remains.
+- Only stop and reply if:
+  1. you are blocked by missing information,
+  2. you are blocked by missing permissions,
+  3. a hard technical blocker prevents any further safe progress, or
+  4. the entire queued scope is fully complete.
+- Use only preapproved in-repo scripts first.
+- If no preapproved script fits, add or edit one in `scripts/ai/` first, then use that script.
+- Do not ask for escalation if an in-repo script can solve the problem.
+- Treat instructions.md as the authoritative execution contract.
+
 
 # AGENT MEMORY COMPATIBILITY SHIM
 
@@ -97,12 +153,76 @@ If any prompt mentions `AGENT_MEMORY.md`, treat that as satisfied by:
 Do not stop or resurface merely because the uppercase file was missing previously.
 
 
-System Initialization. Review your `.agent-memory.md` and the `chummer-core-engine.design.v2.md` document in the root.
-Your Day 1 Objective is Milestone E-1: Isolation and Compile Recovery.
-1. Delete the following top-level directories immediately: `Chummer.Api`, `Chummer.Avalonia`, `Chummer.Avalonia.Browser`, `Chummer.Blazor`, `Chummer.Blazor.Desktop`, `Chummer.Portal`, `Chummer.Presentation`, `Chummer.Web`, `ChummerHub`, and `Docker`.
-2. Create a new `Chummer.CoreEngine.sln` solution file.
-3. Add the remaining core mechanics, ruleset, and contract projects to this solution.
-4. Resolve any broken references caused by the deletion of the UI/API layers by mocking them or creating empty stub interfaces in the contracts layer. Do not stop until `dotnet build Chummer.CoreEngine.sln` returns a green build.
+# Audit — core
+
+- Generated: 2026-03-08T08:51:33+01:00
+- Repo root: /docker/chummercomplete/chummer-core-engine
+- Design doc expected: chummer-core-engine.design.v2.md
+
+## Solutions
+Chummer.CoreEngine.sln
+Chummer.sln
+Chummer/Chummer.sln
+Translator/Translator.sln
+
+## Projects
+Chummer.Application/Chummer.Application.csproj
+Chummer.Benchmarks/Chummer.Benchmarks.csproj
+Chummer.Contracts/Chummer.Contracts.csproj
+Chummer.Core/Chummer.Core.csproj
+Chummer.Infrastructure.Browser/Chummer.Infrastructure.Browser.csproj
+Chummer.Infrastructure/Chummer.Infrastructure.csproj
+Chummer.Rulesets.Hosting/Chummer.Rulesets.Hosting.csproj
+Chummer.Rulesets.Sr4/Chummer.Rulesets.Sr4.csproj
+Chummer.Rulesets.Sr5/Chummer.Rulesets.Sr5.csproj
+Chummer.Rulesets.Sr6/Chummer.Rulesets.Sr6.csproj
+Chummer.Tests/Chummer.Tests.csproj
+Chummer/Chummer.csproj
+ChummerDataViewer/ChummerDataViewer.csproj
+CrashHandler/CrashHandler.csproj
+Plugins/ChummerHub.Client/ChummerHub.Client.csproj
+Plugins/ChummerHub.Client/OidcClient/IdentityTokenValidator/IdentityTokenValidator.csproj
+Plugins/ChummerHub.Client/OidcClient/OidcClient/OidcClient.csproj
+Plugins/SamplePlugin/SamplePlugin.csproj
+TextblockConverter/Textblock-Converter.csproj
+Translator/Translator.csproj
+
+## Top-level directories
+.aider.tags.cache.v4
+.git
+.github
+Chummer
+Chummer.Application
+Chummer.Benchmarks
+Chummer.Contracts
+Chummer.Core
+Chummer.CoreEngine.Tests
+Chummer.Infrastructure
+Chummer.Infrastructure.Browser
+Chummer.Rulesets.Hosting
+Chummer.Rulesets.Sr4
+Chummer.Rulesets.Sr5
+Chummer.Rulesets.Sr6
+Chummer.Tests
+ChummerDataViewer
+CrashHandler
+Plugins
+TextblockConverter
+Translator
+docs
+git
+scripts
+settings
+
+## Key instruction files
+present: instructions.md
+present: .agent-memory.md
+present: AGENT_MEMORY.md
+present: AGENTS.md
+present: chummer-core-engine.design.v2.md
+
+## Recommendation
+Keep only engine/rules/contracts/tests. Remove or abstract any presentation/API leakage.
 
 
-Inspect current repo state before changing anything. Do not repeat already completed work. Continue silently until fully complete or blocked on missing info/permissions.
+Inspect current repo state before changing anything. Do not repeat already completed work. Continue silently through the queue until fully complete or truly blocked on missing info/permissions.

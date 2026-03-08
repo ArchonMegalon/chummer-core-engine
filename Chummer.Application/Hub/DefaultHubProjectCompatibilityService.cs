@@ -281,7 +281,9 @@ public sealed class DefaultHubProjectCompatibilityService : IHubProjectCompatibi
                     MaximumGasBudget: descriptor?.MaximumGasBudget,
                     PackId: entry.Manifest.PackId,
                     AssetKind: capability.AssetKind,
-                    AssetMode: capability.AssetMode);
+                    AssetMode: capability.AssetMode,
+                    TitleKey: descriptor is null ? null : RulesetCapabilityDescriptorLocalization.ResolveTitleKey(descriptor),
+                    TitleParameters: descriptor is null ? null : RulesetCapabilityDescriptorLocalization.ResolveTitleParameters(descriptor));
             })
             .ToArray();
     }
@@ -306,7 +308,9 @@ public sealed class DefaultHubProjectCompatibilityService : IHubProjectCompatibi
                     DefaultGasBudget: descriptor.DefaultGasBudget,
                     MaximumGasBudget: descriptor.MaximumGasBudget,
                     ProviderId: providerId,
-                    PackId: providerId is null ? null : TryResolvePackId(providerId, packIds));
+                    PackId: providerId is null ? null : TryResolvePackId(providerId, packIds),
+                    TitleKey: RulesetCapabilityDescriptorLocalization.ResolveTitleKey(descriptor),
+                    TitleParameters: RulesetCapabilityDescriptorLocalization.ResolveTitleParameters(descriptor));
             })
             .ToArray();
     }

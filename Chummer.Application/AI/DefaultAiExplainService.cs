@@ -83,8 +83,8 @@ public sealed class DefaultAiExplainService : IAiExplainService
         return new AiExplainValueProjection(
             ExplainEntryId: explainEntryId,
             Kind: ResolveEntryKind(descriptor),
-            TitleKey: $"ruleset.capability.{descriptor.CapabilityId}.title",
-            TitleParameters: [],
+            TitleKey: RulesetCapabilityDescriptorLocalization.ResolveTitleKey(descriptor),
+            TitleParameters: RulesetCapabilityDescriptorLocalization.ResolveTitleParameters(descriptor),
             SummaryKey: summaryKey,
             SummaryParameters: summaryParameters,
             RuntimeFingerprint: runtimeSummary.RuntimeFingerprint,

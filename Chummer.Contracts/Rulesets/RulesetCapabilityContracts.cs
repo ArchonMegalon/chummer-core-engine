@@ -70,7 +70,27 @@ public sealed record RulesetCapabilityDescriptor(
     bool Explainable,
     bool SessionSafe,
     RulesetGasBudget DefaultGasBudget,
-    RulesetGasBudget? MaximumGasBudget = null);
+    RulesetGasBudget? MaximumGasBudget = null,
+    string? TitleKey = null,
+    IReadOnlyList<RulesetExplainParameter>? TitleParameters = null);
+
+public static class RulesetCapabilityDescriptorLocalization
+{
+    public static string ResolveTitleKey(RulesetCapabilityDescriptor descriptor)
+    {
+        ArgumentNullException.ThrowIfNull(descriptor);
+
+        return string.IsNullOrWhiteSpace(descriptor.TitleKey)
+            ? $"ruleset.capability.{descriptor.CapabilityId}.title"
+            : descriptor.TitleKey;
+    }
+
+    public static IReadOnlyList<RulesetExplainParameter> ResolveTitleParameters(RulesetCapabilityDescriptor descriptor)
+    {
+        ArgumentNullException.ThrowIfNull(descriptor);
+        return descriptor.TitleParameters ?? [];
+    }
+}
 
 public interface IRulesetCapabilityDescriptorProvider
 {

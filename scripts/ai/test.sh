@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -euo pipefail
 source "$(dirname "$0")/_env.sh"
-dotnet test "$@" --nologo
+dotnet test "$@" --nologo -m:1

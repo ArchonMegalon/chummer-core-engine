@@ -73,7 +73,10 @@ public sealed class DefaultSessionOverlayProjectionService : ISessionOverlayProj
     {
         if (!TryGetString(item.Payload, "trackerId", out string? trackerId) || trackerId is null)
         {
-            diagnostics.Add(new RulesetCapabilityDiagnostic("session.replay.tracker.missing-id", "session.replay.tracker.missing-id"));
+            diagnostics.Add(new RulesetCapabilityDiagnostic(
+                "session.replay.tracker.missing-id",
+                "session.replay.tracker.missing-id",
+                MessageKey: "session.replay.tracker.missing-id"));
             return;
         }
 
@@ -96,7 +99,10 @@ public sealed class DefaultSessionOverlayProjectionService : ISessionOverlayProj
     {
         if (!TryGetString(item.Payload, "effectId", out string? effectId) || effectId is null)
         {
-            diagnostics.Add(new RulesetCapabilityDiagnostic("session.replay.effect.missing-id", "session.replay.effect.missing-id"));
+            diagnostics.Add(new RulesetCapabilityDiagnostic(
+                "session.replay.effect.missing-id",
+                "session.replay.effect.missing-id",
+                MessageKey: "session.replay.effect.missing-id"));
             return;
         }
 
@@ -117,7 +123,10 @@ public sealed class DefaultSessionOverlayProjectionService : ISessionOverlayProj
     {
         if (!TryGetString(item.Payload, "actionId", out string? actionId) || actionId is null)
         {
-            diagnostics.Add(new RulesetCapabilityDiagnostic("session.replay.pin.missing-id", "session.replay.pin.missing-id"));
+            diagnostics.Add(new RulesetCapabilityDiagnostic(
+                "session.replay.pin.missing-id",
+                "session.replay.pin.missing-id",
+                MessageKey: "session.replay.pin.missing-id"));
             return;
         }
 

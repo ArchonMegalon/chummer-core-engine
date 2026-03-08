@@ -2595,6 +2595,8 @@ public class MigrationComplianceTests
         StringAssert.Contains(rulesetCapabilityContractsText, "public sealed record RulesetCapabilityDiagnostic");
         StringAssert.Contains(rulesetCapabilityContractsText, "string? MessageKey = null");
         StringAssert.Contains(rulesetCapabilityContractsText, "IReadOnlyList<RulesetExplainParameter>? MessageParameters = null");
+        StringAssert.Contains(rulesetCapabilityContractsText, "string? TitleKey = null");
+        StringAssert.Contains(rulesetCapabilityContractsText, "IReadOnlyList<RulesetExplainParameter>? TitleParameters = null");
     }
 
     [TestMethod]
