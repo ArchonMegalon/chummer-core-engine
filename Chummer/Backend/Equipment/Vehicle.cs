@@ -30,9 +30,11 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.IO;
 using System.Xml;
 using System.Xml.XPath;
 using Chummer.Annotations;
+using Chummer.Backend.BuildLab;
 using NLog;
 using TreeNode = System.Windows.Forms.TreeNode;
 using TreeNodeCollection = System.Windows.Forms.TreeNodeCollection;
@@ -3239,8 +3241,15 @@ namespace Chummer.Backend.Equipment
             {
                 using (_objCharacter.LockObject.EnterReadLock())
                 {
-                    return OwnCost + Mods.Sum(objMod => objMod.TotalCost) + WeaponMounts.Sum(wm => wm.TotalCost) +
-                           GearChildren.Sum(objGear => objGear.TotalCost);
+                    decimal ownCost = OwnCost;
+                    decimal modsCost = Mods.Sum(objMod => objMod.TotalCost);
+                    decimal weaponMountsCost = WeaponMounts.Sum(wm => wm.TotalCost);
+                    decimal gearCost = GearChildren.Sum(objGear => objGear.TotalCost);
+
+                    LuaScriptEngine engine = new LuaScriptEngine();
+                    string scriptPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Backend", "BuildLab", "Packs", "VehicleRules.lua");
+                    string script = File.ReadAllText(scriptPath);
+                    return (decimal)engine.EvaluateRule(script, "CalculateTotalCost", (double)ownCost, (double)modsCost, (double)weaponMountsCost, (double)gearCost);
                 }
             }
         }
