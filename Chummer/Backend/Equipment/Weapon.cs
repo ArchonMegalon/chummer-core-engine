@@ -6340,7 +6340,15 @@ namespace Chummer.Backend.Equipment
         /// <summary>
         /// The Weapon's total cost including Accessories and Modifications.
         /// </summary>
-        public decimal TotalCost => OwnCost + WeaponAccessories.Sum(x => x.TotalCost) + Children.Sum(x => x.TotalCost);
+        public decimal TotalCost
+        {
+            get
+            {
+                var engine = new Chummer.Backend.BuildLab.LuaScriptEngine();
+                string script = System.IO.File.ReadAllText(System.IO.Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "Backend", "BuildLab", "Packs", "WeaponRules.lua"));
+                return (decimal)engine.EvaluateRule(script, "CalculateTotalCost", (double)OwnCost, (double)WeaponAccessories.Sum(x => x.TotalCost), (double)Children.Sum(x => x.TotalCost));
+            }
+        }
 
         /// <summary>
         /// The Weapon's total cost including Accessories and Modifications.
