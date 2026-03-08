@@ -1,6 +1,10 @@
+using Chummer.Application.BuildLab;
 using Chummer.Application.Content;
+using Chummer.Application.Journal;
 using Chummer.Application.Session;
+using Chummer.Contracts.BuildLab;
 using Chummer.Contracts.Content;
+using Chummer.Contracts.Journal;
 using Chummer.Contracts.Owners;
 using Chummer.Contracts.Rulesets;
 using Chummer.Contracts.Session;
@@ -21,6 +25,10 @@ internal static class CoreEngineTests
             ExperimentalRulesetsEmitDiagnosticMessageKeys();
             SessionReplayDiagnosticsStayKeyed();
             RuntimeInspectorProjectsCapabilityAndCompatibilityKeys();
+            RuntimeLockDiffIsDeterministicAndParameterized();
+            JournalProjectionIsDeterministicAndValidated();
+            BuildLabOutputsAreDeterministicAndLocalized();
+            ContentInstallPreviewsEmitLocalizationKeys();
             Console.WriteLine("core-engine-tests: ok");
             return 0;
         }
@@ -173,6 +181,486 @@ internal static class CoreEngineTests
             resolvedProjection.CompatibilityDiagnostics.Any(diagnostic =>
                 string.Equals(diagnostic.MessageKey, "runtime.lock.compatibility.compatible", StringComparison.Ordinal)),
             "Runtime inspector should surface compatibility message keys.");
+        AssertEx.True(
+            resolvedProjection.CompatibilityDiagnostics.All(diagnostic =>
+                string.Equals(diagnostic.Message, diagnostic.MessageKey, StringComparison.Ordinal)
+                && diagnostic.MessageParameters is { Count: > 0 }),
+            "Runtime inspector compatibility diagnostics should keep keyed message payloads.");
+        AssertEx.True(
+            resolvedProjection.Warnings.All(warning =>
+                string.Equals(warning.Message, warning.MessageKey, StringComparison.Ordinal)
+                && warning.MessageParameters is { Count: > 0 }),
+            "Runtime inspector warnings should keep keyed message payloads.");
+        AssertEx.True(
+            resolvedProjection.MigrationPreview.All(item =>
+                string.Equals(item.Summary, item.SummaryKey, StringComparison.Ordinal)
+                && item.SummaryParameters is { Count: > 0 }),
+            "Runtime inspector migration previews should keep keyed summary payloads.");
+    }
+
+    private static void RuntimeLockDiffIsDeterministicAndParameterized()
+    {
+        DefaultRuntimeLockDiffService service = new();
+        ResolvedRuntimeLock before = new(
+            RulesetId: RulesetDefaults.Sr5,
+            ContentBundles:
+            [
+                new ContentBundleDescriptor(
+                    BundleId: "official.sr5.base",
+                    RulesetId: RulesetDefaults.Sr5,
+                    Version: "schema-1",
+                    Title: "SR5 Base",
+                    Description: "Built-in base content.",
+                    AssetPaths: ["lang/", "data/"])
+            ],
+            RulePacks:
+            [
+                new ArtifactVersionReference("house-rules", "1.0.0"),
+                new ArtifactVersionReference("gm-overrides", "1.0.0")
+            ],
+            ProviderBindings: new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                [RulePackCapabilityIds.ValidateCharacter] = "house-rules/validate.character",
+                [RulePackCapabilityIds.ContentCatalog] = "gm-overrides/content.catalog"
+            },
+            EngineApiVersion: "rulepack-v1",
+            RuntimeFingerprint: "sha256:before");
+        ResolvedRuntimeLock afterA = new(
+            RulesetId: RulesetDefaults.Sr6,
+            ContentBundles:
+            [
+                new ContentBundleDescriptor(
+                    BundleId: "campaign.seattle",
+                    RulesetId: RulesetDefaults.Sr6,
+                    Version: "2026.03",
+                    Title: "Seattle Campaign",
+                    Description: "Campaign bundle.",
+                    AssetPaths: ["data/", "media/"]),
+                new ContentBundleDescriptor(
+                    BundleId: "official.sr5.base",
+                    RulesetId: RulesetDefaults.Sr5,
+                    Version: "schema-1",
+                    Title: "SR5 Base",
+                    Description: "Built-in base content.",
+                    AssetPaths: ["data/", "lang/"])
+            ],
+            RulePacks:
+            [
+                new ArtifactVersionReference("gm-overrides", "1.0.0"),
+                new ArtifactVersionReference("seattle-tools", "2.0.0")
+            ],
+            ProviderBindings: new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                [RulePackCapabilityIds.ContentCatalog] = "seattle-tools/content.catalog",
+                [RulePackCapabilityIds.ValidateCharacter] = "house-rules/validate.character.v2"
+            },
+            EngineApiVersion: "rulepack-v2",
+            RuntimeFingerprint: "sha256:after-a");
+        ResolvedRuntimeLock afterB = afterA with
+        {
+            ContentBundles =
+            [
+                afterA.ContentBundles[1],
+                afterA.ContentBundles[0]
+            ],
+            RulePacks =
+            [
+                afterA.RulePacks[1],
+                afterA.RulePacks[0]
+            ],
+            ProviderBindings = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                [RulePackCapabilityIds.ValidateCharacter] = "house-rules/validate.character.v2",
+                [RulePackCapabilityIds.ContentCatalog] = "seattle-tools/content.catalog"
+            },
+            RuntimeFingerprint = "sha256:after-b"
+        };
+
+        RuntimeLockDiffProjection diffA = service.Diff(before, afterA);
+        RuntimeLockDiffProjection diffB = service.Diff(before, afterB);
+
+        AssertEx.SequenceEqual(
+            diffA.Changes.Select(ToComparableChange),
+            diffB.Changes.Select(ToComparableChange),
+            "Runtime-lock diffs should remain stable across input ordering.");
+        AssertEx.True(
+            diffA.Changes.All(change => change.ReasonParameters.Count > 0),
+            "Runtime-lock diffs should carry structured reason parameters for every change.");
+        AssertEx.SequenceEqual(
+            diffA.Changes.Select(change => change.Kind),
+            [
+                RuntimeLockDiffChangeKinds.RulesetChanged,
+                RuntimeLockDiffChangeKinds.EngineApiChanged,
+                RuntimeLockDiffChangeKinds.ContentBundleAdded,
+                RuntimeLockDiffChangeKinds.RulePackAdded,
+                RuntimeLockDiffChangeKinds.RulePackRemoved,
+                RuntimeLockDiffChangeKinds.ProviderBindingChanged,
+                RuntimeLockDiffChangeKinds.ProviderBindingChanged
+            ],
+            "Runtime-lock diffs should emit changes in a deterministic kind order.");
+    }
+
+    private static void JournalProjectionIsDeterministicAndValidated()
+    {
+        DefaultJournalProjectionService service = new();
+        JournalProjection projection = service.BuildProjection(
+            scopeKind: JournalScopeKinds.Session,
+            scopeId: "session-7",
+            notes:
+            [
+                new NoteDocument(
+                    NoteId: "note-2",
+                    Owner: OwnerScope.LocalSingleUser,
+                    ScopeKind: JournalScopeKinds.Session,
+                    ScopeId: "session-7",
+                    Title: "Aftermath",
+                    Blocks:
+                    [
+                        new NoteBlock("block-b", NoteBlockKinds.Paragraph, "Second", DateTimeOffset.UnixEpoch.AddHours(2)),
+                        new NoteBlock("block-a", NoteBlockKinds.Paragraph, "First", DateTimeOffset.UnixEpoch.AddHours(1))
+                    ],
+                    UpdatedAtUtc: DateTimeOffset.UnixEpoch.AddHours(4)),
+                new NoteDocument(
+                    NoteId: "note-1",
+                    Owner: OwnerScope.LocalSingleUser,
+                    ScopeKind: JournalScopeKinds.Session,
+                    ScopeId: "session-7",
+                    Title: "Prep",
+                    Blocks:
+                    [
+                        new NoteBlock("block-c", NoteBlockKinds.Paragraph, "Only", DateTimeOffset.UnixEpoch.AddHours(3))
+                    ],
+                    UpdatedAtUtc: DateTimeOffset.UnixEpoch.AddHours(2))
+            ],
+            ledgerEntries:
+            [
+                new LedgerEntry(
+                    EntryId: "ledger-2",
+                    Owner: OwnerScope.LocalSingleUser,
+                    ScopeKind: JournalScopeKinds.Session,
+                    ScopeId: "session-7",
+                    Kind: LedgerEntryKinds.Expense,
+                    Amount: -200m,
+                    Currency: "nuyen",
+                    Label: "Bribes",
+                    OccurredAtUtc: DateTimeOffset.UnixEpoch.AddHours(4),
+                    NoteId: "missing-note"),
+                new LedgerEntry(
+                    EntryId: "ledger-1",
+                    Owner: OwnerScope.LocalSingleUser,
+                    ScopeKind: JournalScopeKinds.Session,
+                    ScopeId: "session-7",
+                    Kind: LedgerEntryKinds.Karma,
+                    Amount: 2m,
+                    Currency: "karma",
+                    Label: "Run reward",
+                    OccurredAtUtc: DateTimeOffset.UnixEpoch.AddHours(1),
+                    NoteId: "note-1")
+            ],
+            timelineEvents:
+            [
+                new TimelineEvent(
+                    EventId: "timeline-2",
+                    Owner: OwnerScope.LocalSingleUser,
+                    ScopeKind: JournalScopeKinds.Session,
+                    ScopeId: "session-7",
+                    Kind: TimelineEventKinds.Note,
+                    Title: "Cleanup",
+                    StartsAtUtc: DateTimeOffset.UnixEpoch.AddHours(6),
+                    EndsAtUtc: DateTimeOffset.UnixEpoch.AddHours(5),
+                    NoteId: "note-2",
+                    LedgerEntryId: "missing-ledger"),
+                new TimelineEvent(
+                    EventId: "timeline-1",
+                    Owner: OwnerScope.LocalSingleUser,
+                    ScopeKind: JournalScopeKinds.Session,
+                    ScopeId: "session-7",
+                    Kind: TimelineEventKinds.Session,
+                    Title: "Meet",
+                    StartsAtUtc: DateTimeOffset.UnixEpoch.AddHours(2),
+                    EndsAtUtc: DateTimeOffset.UnixEpoch.AddHours(3),
+                    NoteId: "note-1",
+                    LedgerEntryId: "ledger-1")
+            ]);
+
+        IReadOnlyList<RulesetCapabilityDiagnostic> diagnostics = service.Validate(projection);
+
+        AssertEx.SequenceEqual(
+            projection.Notes.Select(static note => note.NoteId),
+            ["note-1", "note-2"],
+            "Journal projections should order notes deterministically.");
+        AssertEx.SequenceEqual(
+            projection.Notes[1].Blocks.Select(static block => block.BlockId),
+            ["block-a", "block-b"],
+            "Journal projections should order note blocks deterministically.");
+        AssertEx.SequenceEqual(
+            projection.LedgerEntries.Select(static entry => entry.EntryId),
+            ["ledger-1", "ledger-2"],
+            "Journal projections should order ledger entries deterministically.");
+        AssertEx.SequenceEqual(
+            projection.TimelineEvents.Select(static entry => entry.EventId),
+            ["timeline-1", "timeline-2"],
+            "Journal projections should order timeline events deterministically.");
+        AssertEx.SequenceEqual(
+            diagnostics.Select(static diagnostic => diagnostic.Code),
+            ["journal.ledger.note-missing", "journal.timeline.invalid-range", "journal.timeline.ledger-missing"],
+            "Journal validation should emit deterministic keyed diagnostics.");
+        AssertEx.True(
+            diagnostics.All(static diagnostic => string.Equals(diagnostic.MessageKey, diagnostic.Code, StringComparison.Ordinal)),
+            "Journal validation should keep diagnostics localization-ready.");
+    }
+
+    private static void BuildLabOutputsAreDeterministicAndLocalized()
+    {
+        DefaultBuildLabService service = new();
+
+        IReadOnlyList<BuildVariantProjection> variantsA = service.GenerateBuildVariants(
+            "Alice Runner",
+            ["street-samurai", "face", "face"]);
+        IReadOnlyList<BuildVariantProjection> variantsB = service.GenerateBuildVariants(
+            "Alice Runner",
+            ["face", "street-samurai"]);
+        IReadOnlyList<BuildVariantProjection> fallbackVariants = service.GenerateBuildVariants("Alice Runner", []);
+        KarmaSpendProjection progression = service.ProjectKarmaSpend("Alice Runner", string.Empty, []);
+        IReadOnlyList<BuildTrapChoice> traps = service.DetectTrapChoices("Alice Runner", "alice-runner-face-1");
+        IReadOnlyList<BuildRoleOverlap> overlaps = service.DetectRoleOverlap(
+            "Alice Runner",
+            ["alice-runner-face-2", "alice-runner-generalist-1", "alice-runner-face-1"]);
+        IReadOnlyList<BuildCorePackageSuggestion> packages = service.SuggestCorePackages("Alice Runner", "alice-runner-face-1");
+        BuildVariantProjection? scoredVariant = service.ScoreBuildVariant("Alice Runner", "alice-runner-face-1");
+
+        AssertEx.SequenceEqual(
+            variantsA.Select(static variant => variant.VariantId),
+            variantsB.Select(static variant => variant.VariantId),
+            "Build Lab variants should remain deterministic across tag ordering and duplicate inputs.");
+        AssertEx.True(
+            variantsA.All(static variant =>
+                string.Equals(variant.LabelKey, "buildlab.variant.label", StringComparison.Ordinal)
+                && string.Equals(variant.SummaryKey, "buildlab.variant.summary", StringComparison.Ordinal)
+                && variant.LabelParameters.Count > 0
+                && variant.SummaryParameters.Count > 0
+                && !string.IsNullOrWhiteSpace(variant.ExplainEntryId)),
+            "Build Lab variants should expose localization-ready keys, parameters, and explain entry ids.");
+        AssertEx.Equal(
+            "buildlab.variant.constraint.secondary-role",
+            variantsA[1].Constraints[0].ConstraintKey,
+            "Secondary Build Lab variants should emit keyed constraints.");
+        AssertEx.Equal(
+            "buildlab.variant.role-tag-defaulted",
+            fallbackVariants[0].Diagnostics![0].MessageKey,
+            "Build Lab should emit keyed diagnostics when role tags fall back to the generalist variant.");
+
+        AssertEx.SequenceEqual(
+            progression.Steps.Select(static step => step.KarmaTotal),
+            [25, 50, 100],
+            "Build Lab progression should default milestones deterministically.");
+        AssertEx.Equal(
+            "buildlab.progression.milestone-defaulted",
+            progression.Diagnostics![0].MessageKey,
+            "Build Lab progression should emit keyed diagnostics when milestones default.");
+        AssertEx.True(
+            progression.Steps.All(static step =>
+                string.Equals(step.SummaryKey, "buildlab.progression.step.summary", StringComparison.Ordinal)
+                && step.SummaryParameters.Count > 0
+                && !string.IsNullOrWhiteSpace(step.ExplainEntryId)),
+            "Build Lab progression steps should expose localization-ready summaries.");
+
+        AssertEx.Equal(
+            "buildlab.trap.resource-overcommit",
+            traps[0].ReasonKey,
+            "Build Lab trap choices should emit keyed reasons.");
+        AssertEx.True(
+            traps[0].Parameters.Count >= 4 && !string.IsNullOrWhiteSpace(traps[0].ExplainEntryId),
+            "Build Lab trap choices should expose structured parameters and explain entry ids.");
+
+        AssertEx.SequenceEqual(
+            overlaps.Select(static overlap => $"{overlap.LeftVariantId}|{overlap.RightVariantId}|{overlap.OverlapScore}"),
+            [
+                "alice-runner-face-1|alice-runner-face-2|1.0",
+                "alice-runner-face-1|alice-runner-generalist-1|0.6",
+                "alice-runner-face-2|alice-runner-generalist-1|0.6"
+            ],
+            "Build Lab role-overlap projections should remain deterministically ranked.");
+        AssertEx.True(
+            overlaps.All(static overlap =>
+                string.Equals(overlap.ReasonKey, "buildlab.role-overlap.summary", StringComparison.Ordinal)
+                && overlap.ReasonParameters.Count == 4
+                && !string.IsNullOrWhiteSpace(overlap.ExplainEntryId)),
+            "Build Lab role-overlap projections should expose keyed reasons and explain hooks.");
+
+        AssertEx.SequenceEqual(
+            packages.Select(static package => package.PackageId),
+            ["face.core.a", "face.core.b"],
+            "Build Lab package suggestions should remain deterministically ranked.");
+        AssertEx.True(
+            packages.All(static package =>
+                string.Equals(package.LabelKey, "buildlab.package.label", StringComparison.Ordinal)
+                && string.Equals(package.SummaryKey, "buildlab.package.summary", StringComparison.Ordinal)
+                && package.LabelParameters.Count > 0
+                && package.SummaryParameters.Count > 0
+                && !string.IsNullOrWhiteSpace(package.ExplainEntryId)),
+            "Build Lab package suggestions should expose localization-ready labels, summaries, and explain hooks.");
+
+        AssertEx.NotNull(scoredVariant, "Build Lab should resolve exact variant ids when scoring a generated variant.");
+    }
+
+    private static void ContentInstallPreviewsEmitLocalizationKeys()
+    {
+        RuleProfileApplyTarget sessionLedgerTarget = new(RuleProfileApplyTargetKinds.SessionLedger, "session-1");
+        RuleProfileApplyTarget workspaceTarget = new(RuleProfileApplyTargetKinds.Workspace, "workspace-1");
+
+        RuntimeLockRegistryEntry runtimeLockEntry = new(
+            LockId: "runtime-lock-1",
+            Owner: OwnerScope.LocalSingleUser,
+            Title: "Seattle Runtime",
+            Visibility: ArtifactVisibilityModes.LocalOnly,
+            CatalogKind: RuntimeLockCatalogKinds.Saved,
+            RuntimeLock: new ResolvedRuntimeLock(
+                RulesetId: RulesetDefaults.Sr5,
+                ContentBundles:
+                [
+                    new ContentBundleDescriptor(
+                        BundleId: "official.sr5.base",
+                        RulesetId: RulesetDefaults.Sr5,
+                        Version: "schema-1",
+                        Title: "SR5 Base",
+                        Description: "Built-in base content.",
+                        AssetPaths: ["data/", "lang/"])
+                ],
+                RulePacks: [],
+                ProviderBindings: new Dictionary<string, string>(StringComparer.Ordinal),
+                EngineApiVersion: "rulepack-v1",
+                RuntimeFingerprint: "sha256:runtime-lock-1"),
+            UpdatedAtUtc: DateTimeOffset.UnixEpoch.AddHours(1),
+            Description: "Pinned local runtime.",
+            Install: new ArtifactInstallState(ArtifactInstallStates.Available));
+        DefaultRuntimeLockInstallService runtimeLockService = new(
+            new RuntimeLockRegistryServiceStub([runtimeLockEntry]),
+            new RuntimeLockInstallHistoryStoreStub());
+        RuntimeLockInstallPreviewReceipt? runtimeLockPreview = runtimeLockService.Preview(
+            OwnerScope.LocalSingleUser,
+            runtimeLockEntry.LockId,
+            sessionLedgerTarget,
+            RulesetDefaults.Sr5);
+
+        AssertEx.NotNull(runtimeLockPreview, "Runtime-lock preview should resolve the seeded entry.");
+        AssertEx.SequenceEqual(
+            runtimeLockPreview!.Changes.Select(change => change.SummaryKey ?? string.Empty),
+            [
+                "runtime.lock.install.preview.runtime-lock-pinned",
+                "runtime.lock.install.preview.session-replay-required"
+            ],
+            "Runtime-lock install previews should expose deterministic keyed summaries.");
+        AssertEx.SequenceEqual(
+            runtimeLockPreview.Warnings.Select(warning => warning.MessageKey ?? string.Empty),
+            [
+                "runtime.lock.install.warning.builtin-only",
+                "runtime.lock.install.warning.local-only"
+            ],
+            "Runtime-lock install previews should expose deterministic keyed warnings.");
+        AssertEx.True(
+            runtimeLockPreview.Changes.All(change =>
+                string.Equals(change.Summary, change.SummaryKey, StringComparison.Ordinal)
+                && change.SummaryParameters is { Count: > 0 }),
+            "Runtime-lock install previews should keep summary payloads localization-ready.");
+        AssertEx.True(
+            runtimeLockPreview.Warnings.All(warning =>
+                string.Equals(warning.Message, warning.MessageKey, StringComparison.Ordinal)
+                && warning.MessageParameters is { Count: > 0 }),
+            "Runtime-lock install warnings should keep message payloads localization-ready.");
+
+        RulePackRegistryEntry reviewPackEntry = CreateRulePackEntry(
+            packId: "review-pack",
+            capabilities:
+            [
+                new RulePackCapabilityDescriptor(
+                    RulePackCapabilityIds.ValidateCharacter,
+                    RulePackAssetKinds.Lua,
+                    RulePackAssetModes.AddProvider,
+                    Explainable: true,
+                    SessionSafe: false)
+            ]);
+        RulePackRegistryEntry contentOnlyPackEntry = CreateRulePackEntry(
+            packId: "content-only-pack",
+            capabilities: []);
+        DefaultRulePackInstallService rulePackService = new(
+            new RulePackRegistryServiceStub([reviewPackEntry, contentOnlyPackEntry]),
+            new RulePackInstallStateStoreStub(),
+            new RulePackInstallHistoryStoreStub());
+        RulePackInstallPreviewReceipt? reviewPackPreview = rulePackService.Preview(
+            OwnerScope.LocalSingleUser,
+            "review-pack",
+            sessionLedgerTarget,
+            RulesetDefaults.Sr5);
+        RulePackInstallPreviewReceipt? contentOnlyPackPreview = rulePackService.Preview(
+            OwnerScope.LocalSingleUser,
+            "content-only-pack",
+            workspaceTarget,
+            RulesetDefaults.Sr5);
+
+        AssertEx.NotNull(reviewPackPreview, "RulePack preview should resolve the seeded review-required pack.");
+        AssertEx.NotNull(contentOnlyPackPreview, "RulePack preview should resolve the seeded content-only pack.");
+        AssertEx.SequenceEqual(
+            reviewPackPreview!.Changes.Select(change => change.SummaryKey ?? string.Empty),
+            [
+                "rulepack.install.preview.install-state-changed",
+                "rulepack.install.preview.runtime-review-required",
+                "rulepack.install.preview.session-replay-required"
+            ],
+            "RulePack install previews should expose deterministic keyed summaries.");
+        AssertEx.SequenceEqual(
+            reviewPackPreview.Warnings.Select(warning => warning.MessageKey ?? string.Empty),
+            ["rulepack.install.warning.local-only"],
+            "RulePack install previews should preserve keyed local-only warnings.");
+        AssertEx.Equal(
+            "rulepack.install.warning.content-only",
+            contentOnlyPackPreview!.Warnings[1].MessageKey,
+            "Content-only RulePacks should emit keyed content-only warnings.");
+        AssertEx.True(
+            reviewPackPreview.Changes.All(change =>
+                string.Equals(change.Summary, change.SummaryKey, StringComparison.Ordinal)
+                && change.SummaryParameters is { Count: > 0 }),
+            "RulePack install previews should keep summary payloads localization-ready.");
+
+        DefaultRuleProfileApplicationService ruleProfileService = new(
+            new RuleProfileRegistryServiceStub([CreateProfile(), CreateBuiltinOnlyProfile()]),
+            new RuntimeLockInstallServiceStub(),
+            new RuleProfileInstallStateStoreStub(),
+            new RuleProfileInstallHistoryStoreStub());
+        RuleProfilePreviewReceipt? profilePreview = ruleProfileService.Preview(
+            OwnerScope.LocalSingleUser,
+            "official.sr5.core",
+            sessionLedgerTarget,
+            RulesetDefaults.Sr5);
+        RuleProfilePreviewReceipt? builtinProfilePreview = ruleProfileService.Preview(
+            OwnerScope.LocalSingleUser,
+            "official.sr5.base-only",
+            workspaceTarget,
+            RulesetDefaults.Sr5);
+
+        AssertEx.NotNull(profilePreview, "RuleProfile preview should resolve the seeded profile.");
+        AssertEx.NotNull(builtinProfilePreview, "RuleProfile preview should resolve the built-in-only profile.");
+        AssertEx.SequenceEqual(
+            profilePreview!.Changes.Select(change => change.SummaryKey ?? string.Empty),
+            [
+                "ruleprofile.preview.runtime-lock-pinned",
+                "ruleprofile.preview.rulepack-selection-changed",
+                "ruleprofile.preview.session-replay-required"
+            ],
+            "RuleProfile previews should expose deterministic keyed summaries.");
+        AssertEx.SequenceEqual(
+            profilePreview.Warnings.Select(warning => warning.MessageKey ?? string.Empty),
+            ["ruleprofile.preview.warning.local-only"],
+            "RuleProfile previews should preserve keyed local-only warnings.");
+        AssertEx.Equal(
+            "ruleprofile.preview.warning.builtin-only",
+            builtinProfilePreview!.Warnings[1].MessageKey,
+            "Built-in-only RuleProfiles should emit keyed built-in runtime warnings.");
+        AssertEx.True(
+            profilePreview.Changes.All(change =>
+                string.Equals(change.Summary, change.SummaryKey, StringComparison.Ordinal)
+                && change.SummaryParameters is { Count: > 0 }),
+            "RuleProfile previews should keep summary payloads localization-ready.");
     }
 
     private static RuleProfileRegistryEntry CreateProfile()
@@ -223,19 +711,95 @@ internal static class CoreEngineTests
             RegistryEntrySourceKinds.BuiltInCoreProfile);
     }
 
+    private static RuleProfileRegistryEntry CreateBuiltinOnlyProfile()
+    {
+        return new RuleProfileRegistryEntry(
+            new RuleProfileManifest(
+                ProfileId: "official.sr5.base-only",
+                Title: "Official SR5 Base Only",
+                Description: "Base runtime without pack overlays.",
+                RulesetId: RulesetDefaults.Sr5,
+                Audience: RuleProfileAudienceKinds.General,
+                CatalogKind: RuleProfileCatalogKinds.Official,
+                RulePacks: [],
+                DefaultToggles: [],
+                RuntimeLock: new ResolvedRuntimeLock(
+                    RulesetId: RulesetDefaults.Sr5,
+                    ContentBundles:
+                    [
+                        new ContentBundleDescriptor(
+                            BundleId: "official.sr5.base",
+                            RulesetId: RulesetDefaults.Sr5,
+                            Version: "schema-1",
+                            Title: "SR5 Base",
+                            Description: "Built-in base content.",
+                            AssetPaths: ["data/", "lang/"])
+                    ],
+                    RulePacks: [],
+                    ProviderBindings: new Dictionary<string, string>(StringComparer.Ordinal),
+                    EngineApiVersion: "rulepack-v1",
+                    RuntimeFingerprint: "runtime-lock-sha256-base-only"),
+                UpdateChannel: RuleProfileUpdateChannels.Stable),
+            new RuleProfilePublicationMetadata(
+                OwnerId: "local-single-user",
+                Visibility: ArtifactVisibilityModes.LocalOnly,
+                PublicationStatus: RulePackPublicationStatuses.Published,
+                Review: new RulePackReviewDecision(RulePackReviewStates.NotRequired),
+                Shares: []),
+            new ArtifactInstallState(ArtifactInstallStates.Available),
+            RegistryEntrySourceKinds.BuiltInCoreProfile);
+    }
+
+    private static RulePackRegistryEntry CreateRulePackEntry(
+        string packId,
+        IReadOnlyList<RulePackCapabilityDescriptor> capabilities)
+    {
+        return new RulePackRegistryEntry(
+            new RulePackManifest(
+                PackId: packId,
+                Version: "1.0.0",
+                Title: $"{packId} Title",
+                Author: "GM",
+                Description: $"{packId} description.",
+                Targets: [RulesetDefaults.Sr5],
+                EngineApiVersion: "rulepack-v1",
+                DependsOn: [],
+                ConflictsWith: [],
+                Visibility: ArtifactVisibilityModes.LocalOnly,
+                TrustTier: ArtifactTrustTiers.LocalOnly,
+                Assets: [],
+                Capabilities: capabilities,
+                ExecutionPolicies: []),
+            new RulePackPublicationMetadata(
+                OwnerId: "local-single-user",
+                Visibility: ArtifactVisibilityModes.LocalOnly,
+                PublicationStatus: RulePackPublicationStatuses.Published,
+                Review: new RulePackReviewDecision(RulePackReviewStates.NotRequired),
+                Shares: []),
+            new ArtifactInstallState(ArtifactInstallStates.Available));
+    }
+
     private sealed class RuleProfileRegistryServiceStub : IRuleProfileRegistryService
     {
-        private readonly RuleProfileRegistryEntry _entry;
+        private readonly IReadOnlyList<RuleProfileRegistryEntry> _entries;
 
         public RuleProfileRegistryServiceStub(RuleProfileRegistryEntry entry)
+            : this([entry])
         {
-            _entry = entry;
         }
 
-        public IReadOnlyList<RuleProfileRegistryEntry> List(OwnerScope owner, string? rulesetId = null) => [_entry];
+        public RuleProfileRegistryServiceStub(IReadOnlyList<RuleProfileRegistryEntry> entries)
+        {
+            _entries = entries;
+        }
+
+        public IReadOnlyList<RuleProfileRegistryEntry> List(OwnerScope owner, string? rulesetId = null)
+            => _entries;
 
         public RuleProfileRegistryEntry? Get(OwnerScope owner, string profileId, string? rulesetId = null)
-            => string.Equals(profileId, _entry.Manifest.ProfileId, StringComparison.Ordinal) ? _entry : null;
+            => _entries.FirstOrDefault(entry =>
+                string.Equals(profileId, entry.Manifest.ProfileId, StringComparison.Ordinal)
+                && (rulesetId is null || string.Equals(rulesetId, entry.Manifest.RulesetId, StringComparison.Ordinal)));
     }
 
     private sealed class RulePackRegistryServiceStub : IRulePackRegistryService
@@ -252,6 +816,114 @@ internal static class CoreEngineTests
         public RulePackRegistryEntry? Get(OwnerScope owner, string packId, string? rulesetId = null)
             => _entries.FirstOrDefault(entry => string.Equals(entry.Manifest.PackId, packId, StringComparison.Ordinal));
     }
+
+    private sealed class RuntimeLockRegistryServiceStub : IRuntimeLockRegistryService
+    {
+        private readonly Dictionary<string, RuntimeLockRegistryEntry> _entries;
+
+        public RuntimeLockRegistryServiceStub(IReadOnlyList<RuntimeLockRegistryEntry> entries)
+        {
+            _entries = entries.ToDictionary(static entry => entry.LockId, StringComparer.Ordinal);
+        }
+
+        public RuntimeLockRegistryPage List(OwnerScope owner, string? rulesetId = null)
+        {
+            RuntimeLockRegistryEntry[] entries = _entries.Values
+                .Where(entry => rulesetId is null || string.Equals(entry.RuntimeLock.RulesetId, rulesetId, StringComparison.Ordinal))
+                .OrderBy(static entry => entry.LockId, StringComparer.Ordinal)
+                .ToArray();
+
+            return new RuntimeLockRegistryPage(entries, entries.Length);
+        }
+
+        public RuntimeLockRegistryEntry? Get(OwnerScope owner, string lockId, string? rulesetId = null)
+            => _entries.TryGetValue(lockId, out RuntimeLockRegistryEntry? entry)
+               && (rulesetId is null || string.Equals(entry.RuntimeLock.RulesetId, rulesetId, StringComparison.Ordinal))
+                ? entry
+                : null;
+
+        public RuntimeLockRegistryEntry Upsert(OwnerScope owner, string lockId, RuntimeLockSaveRequest request)
+        {
+            RuntimeLockRegistryEntry persisted = new(
+                LockId: lockId,
+                Owner: owner,
+                Title: request.Title,
+                Visibility: request.Visibility,
+                CatalogKind: RuntimeLockCatalogKinds.Saved,
+                RuntimeLock: request.RuntimeLock,
+                UpdatedAtUtc: DateTimeOffset.UtcNow,
+                Description: request.Description,
+                Install: request.Install ?? new ArtifactInstallState(ArtifactInstallStates.Available));
+            _entries[lockId] = persisted;
+            return persisted;
+        }
+    }
+
+    private sealed class RuntimeLockInstallHistoryStoreStub : IRuntimeLockInstallHistoryStore
+    {
+        public IReadOnlyList<RuntimeLockInstallHistoryRecord> List(OwnerScope owner, string? rulesetId = null) => [];
+
+        public IReadOnlyList<RuntimeLockInstallHistoryRecord> GetHistory(OwnerScope owner, string lockId, string rulesetId) => [];
+
+        public RuntimeLockInstallHistoryRecord Append(OwnerScope owner, RuntimeLockInstallHistoryRecord record) => record;
+    }
+
+    private sealed class RulePackInstallStateStoreStub : IRulePackInstallStateStore
+    {
+        public IReadOnlyList<RulePackInstallRecord> List(OwnerScope owner, string? rulesetId = null) => [];
+
+        public RulePackInstallRecord? Get(OwnerScope owner, string packId, string version, string rulesetId) => null;
+
+        public RulePackInstallRecord Upsert(OwnerScope owner, RulePackInstallRecord record) => record;
+    }
+
+    private sealed class RulePackInstallHistoryStoreStub : IRulePackInstallHistoryStore
+    {
+        public IReadOnlyList<RulePackInstallHistoryRecord> List(OwnerScope owner, string? rulesetId = null) => [];
+
+        public IReadOnlyList<RulePackInstallHistoryRecord> GetHistory(OwnerScope owner, string packId, string version, string rulesetId) => [];
+
+        public RulePackInstallHistoryRecord Append(OwnerScope owner, RulePackInstallHistoryRecord record) => record;
+    }
+
+    private sealed class RuleProfileInstallStateStoreStub : IRuleProfileInstallStateStore
+    {
+        public IReadOnlyList<RuleProfileInstallRecord> List(OwnerScope owner, string? rulesetId = null) => [];
+
+        public RuleProfileInstallRecord? Get(OwnerScope owner, string profileId, string rulesetId) => null;
+
+        public RuleProfileInstallRecord Upsert(OwnerScope owner, RuleProfileInstallRecord record) => record;
+    }
+
+    private sealed class RuleProfileInstallHistoryStoreStub : IRuleProfileInstallHistoryStore
+    {
+        public IReadOnlyList<RuleProfileInstallHistoryRecord> List(OwnerScope owner, string? rulesetId = null) => [];
+
+        public IReadOnlyList<RuleProfileInstallHistoryRecord> GetHistory(OwnerScope owner, string profileId, string rulesetId) => [];
+
+        public RuleProfileInstallHistoryRecord Append(OwnerScope owner, RuleProfileInstallHistoryRecord record) => record;
+    }
+
+    private sealed class RuntimeLockInstallServiceStub : IRuntimeLockInstallService
+    {
+        public RuntimeLockInstallPreviewReceipt? Preview(OwnerScope owner, string lockId, RuleProfileApplyTarget target, string? rulesetId = null) => null;
+
+        public RuntimeLockInstallReceipt? Apply(OwnerScope owner, string lockId, RuleProfileApplyTarget target, string? rulesetId = null) => null;
+    }
+
+    private static string ToComparableChange(RuntimeLockDiffChange change)
+        => string.Join(
+            "|",
+            change.Kind,
+            change.SubjectId,
+            change.BeforeValue ?? string.Empty,
+            change.AfterValue ?? string.Empty,
+            change.ReasonKey,
+            string.Join(
+                ",",
+                change.ReasonParameters
+                    .OrderBy(parameter => parameter.Name, StringComparer.Ordinal)
+                    .Select(parameter => $"{parameter.Name}:{parameter.Value.Kind}:{parameter.Value.StringValue ?? parameter.Value.IntegerValue?.ToString() ?? parameter.Value.NumberValue?.ToString() ?? parameter.Value.DecimalValue?.ToString() ?? parameter.Value.BooleanValue?.ToString() ?? "null"}")));
 }
 
 internal static class AssertEx
@@ -277,6 +949,17 @@ internal static class AssertEx
         if (!condition)
         {
             throw new InvalidOperationException(message);
+        }
+    }
+
+    public static void SequenceEqual<T>(IEnumerable<T> expected, IEnumerable<T> actual, string message)
+    {
+        T[] expectedItems = expected.ToArray();
+        T[] actualItems = actual.ToArray();
+        if (!expectedItems.SequenceEqual(actualItems))
+        {
+            throw new InvalidOperationException(
+                $"{message} Expected: [{string.Join(", ", expectedItems)}]. Actual: [{string.Join(", ", actualItems)}].");
         }
     }
 }

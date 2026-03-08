@@ -127,7 +127,7 @@ public sealed class DefaultRuntimeInspectorService : IRuntimeInspectorService
             {
                 diagnostics.Add(new RuntimeLockCompatibilityDiagnostic(
                     State: RuntimeLockCompatibilityStates.MissingPack,
-                    Message: $"Required RulePack '{selection.RulePack.Id}' is not present in the current registry.",
+                    Message: "runtime.lock.compatibility.missing-pack",
                     RequiredRulesetId: profile.Manifest.RulesetId,
                     RequiredRuntimeFingerprint: profile.Manifest.RuntimeLock.RuntimeFingerprint,
                     MessageKey: "runtime.lock.compatibility.missing-pack",
@@ -145,7 +145,7 @@ public sealed class DefaultRuntimeInspectorService : IRuntimeInspectorService
         {
             diagnostics.Add(new RuntimeLockCompatibilityDiagnostic(
                 State: RuntimeLockCompatibilityStates.Compatible,
-                Message: "Runtime lock resolves against the current RuleProfile and RulePack catalog.",
+                Message: "runtime.lock.compatibility.compatible",
                 RequiredRulesetId: profile.Manifest.RulesetId,
                 RequiredRuntimeFingerprint: profile.Manifest.RuntimeLock.RuntimeFingerprint,
                 MessageKey: "runtime.lock.compatibility.compatible",
@@ -171,7 +171,7 @@ public sealed class DefaultRuntimeInspectorService : IRuntimeInspectorService
             warnings.Add(new RuntimeInspectorWarning(
                 Kind: RuntimeInspectorWarningKinds.Trust,
                 Severity: RuntimeInspectorWarningSeverityLevels.Info,
-                Message: "Profile is local-only and should be republished before public distribution.",
+                Message: "runtime.inspector.warning.trust.local-only",
                 SubjectId: profile.Manifest.ProfileId,
                 MessageKey: "runtime.inspector.warning.trust.local-only",
                 MessageParameters: [Param("profileId", profile.Manifest.ProfileId)]));
@@ -182,7 +182,7 @@ public sealed class DefaultRuntimeInspectorService : IRuntimeInspectorService
             warnings.Add(new RuntimeInspectorWarning(
                 Kind: RuntimeInspectorWarningKinds.Compatibility,
                 Severity: RuntimeInspectorWarningSeverityLevels.Warning,
-                Message: "One or more RulePacks referenced by the profile are missing from the current catalog.",
+                Message: "runtime.inspector.warning.compatibility.missing-pack",
                 SubjectId: profile.Manifest.ProfileId,
                 MessageKey: "runtime.inspector.warning.compatibility.missing-pack",
                 MessageParameters: [Param("profileId", profile.Manifest.ProfileId)]));
@@ -193,7 +193,7 @@ public sealed class DefaultRuntimeInspectorService : IRuntimeInspectorService
             warnings.Add(new RuntimeInspectorWarning(
                 Kind: RuntimeInspectorWarningKinds.ProviderBinding,
                 Severity: RuntimeInspectorWarningSeverityLevels.Info,
-                Message: "Runtime resolves to built-in base content without additional RulePacks.",
+                Message: "runtime.inspector.warning.provider-binding.none",
                 SubjectId: profile.Manifest.ProfileId,
                 MessageKey: "runtime.inspector.warning.provider-binding.none",
                 MessageParameters: [Param("profileId", profile.Manifest.ProfileId)]));
@@ -209,7 +209,7 @@ public sealed class DefaultRuntimeInspectorService : IRuntimeInspectorService
         List<RuntimeMigrationPreviewItem> preview = resolvedRulePacks
             .Select(rulePack => new RuntimeMigrationPreviewItem(
                 Kind: RuntimeMigrationPreviewChangeKinds.RulePackAdded,
-                Summary: $"Profile applies RulePack '{rulePack.RulePack.Id}@{rulePack.RulePack.Version}'.",
+                Summary: "runtime.inspector.preview.rulepack-added",
                 SubjectId: rulePack.RulePack.Id,
                 AfterValue: rulePack.RulePack.Version,
                 RequiresRebind: false,
@@ -225,7 +225,7 @@ public sealed class DefaultRuntimeInspectorService : IRuntimeInspectorService
         {
             preview.Add(new RuntimeMigrationPreviewItem(
                 Kind: RuntimeMigrationPreviewChangeKinds.ContentBundleUpdated,
-                Summary: $"Profile '{profile.Manifest.ProfileId}' pins the built-in runtime fingerprint '{profile.Manifest.RuntimeLock.RuntimeFingerprint}'.",
+                Summary: "runtime.inspector.preview.runtime-pinned",
                 SubjectId: profile.Manifest.RuntimeLock.RuntimeFingerprint,
                 AfterValue: profile.Manifest.RuntimeLock.RuntimeFingerprint,
                 RequiresRebind: false,

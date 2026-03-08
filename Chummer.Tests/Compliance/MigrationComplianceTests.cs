@@ -1959,6 +1959,9 @@ public class MigrationComplianceTests
         StringAssert.Contains(rulePackRegistryContractsText, "PersistedManifest");
         StringAssert.Contains(rulePackRegistryContractsText, "DateTimeOffset? PublishedAtUtc = null");
         StringAssert.Contains(rulePackRegistryContractsText, "string? PublisherId = null");
+        StringAssert.Contains(rulePackRegistryContractsText, "public sealed record RulePackInstallPreviewItem");
+        StringAssert.Contains(rulePackRegistryContractsText, "string? SummaryKey = null");
+        StringAssert.Contains(rulePackRegistryContractsText, "IReadOnlyList<RulesetExplainParameter>? SummaryParameters = null");
     }
 
     [TestMethod]
@@ -1996,6 +1999,8 @@ public class MigrationComplianceTests
         StringAssert.Contains(ruleProfileApplicationContractsText, "public sealed record RuleProfileApplyReceipt");
         StringAssert.Contains(ruleProfileApplicationContractsText, "RuntimeLockInstallReceipt? InstallReceipt = null");
         StringAssert.Contains(ruleProfileApplicationContractsText, "string? DeferredReason = null");
+        StringAssert.Contains(ruleProfileApplicationContractsText, "string? SummaryKey = null");
+        StringAssert.Contains(ruleProfileApplicationContractsText, "IReadOnlyList<RulesetExplainParameter>? SummaryParameters = null");
     }
 
     [TestMethod]
@@ -2648,6 +2653,9 @@ public class MigrationComplianceTests
         StringAssert.Contains(buildLabContractsText, "public sealed record BuildVariantProjection");
         StringAssert.Contains(buildLabContractsText, "public sealed record KarmaSpendProjection");
         StringAssert.Contains(buildLabContractsText, "public sealed record BuildTrapChoice");
+        StringAssert.Contains(buildLabContractsText, "IReadOnlyList<RulesetExplainParameter> LabelParameters");
+        StringAssert.Contains(buildLabContractsText, "string SummaryKey");
+        StringAssert.Contains(buildLabContractsText, "IReadOnlyList<RulesetCapabilityDiagnostic>? Diagnostics = null");
         StringAssert.Contains(buildLabServiceText, "GenerateBuildVariants");
         StringAssert.Contains(buildLabServiceText, "ScoreBuildVariant");
         StringAssert.Contains(buildLabServiceText, "ProjectKarmaSpend");

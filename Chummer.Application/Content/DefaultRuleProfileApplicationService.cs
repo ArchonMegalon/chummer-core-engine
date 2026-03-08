@@ -143,29 +143,37 @@ public sealed class DefaultRuleProfileApplicationService : IRuleProfileApplicati
     {
         List<RuleProfilePreviewItem> changes =
         [
-            new(
-                Kind: RuleProfilePreviewChangeKinds.RuntimeLockPinned,
-                Summary: $"Pin runtime '{entry.Manifest.RuntimeLock.RuntimeFingerprint}' to {target.TargetKind} '{target.TargetId}'.",
-                SubjectId: entry.Manifest.RuntimeLock.RuntimeFingerprint,
-                RequiresConfirmation: false)
+            PreviewItem(
+                kind: RuleProfilePreviewChangeKinds.RuntimeLockPinned,
+                summaryKey: "ruleprofile.preview.runtime-lock-pinned",
+                subjectId: entry.Manifest.RuntimeLock.RuntimeFingerprint,
+                requiresConfirmation: false,
+                ("profileId", entry.Manifest.ProfileId),
+                ("runtimeFingerprint", entry.Manifest.RuntimeLock.RuntimeFingerprint),
+                ("targetKind", target.TargetKind),
+                ("targetId", target.TargetId))
         ];
 
         if (entry.Manifest.RulePacks.Count > 0)
         {
-            changes.Add(new RuleProfilePreviewItem(
-                Kind: RuleProfilePreviewChangeKinds.RulePackSelectionChanged,
-                Summary: $"Apply {entry.Manifest.RulePacks.Count} RulePack selection(s) from profile '{entry.Manifest.ProfileId}'.",
-                SubjectId: entry.Manifest.ProfileId,
-                RequiresConfirmation: true));
+            changes.Add(PreviewItem(
+                kind: RuleProfilePreviewChangeKinds.RulePackSelectionChanged,
+                summaryKey: "ruleprofile.preview.rulepack-selection-changed",
+                subjectId: entry.Manifest.ProfileId,
+                requiresConfirmation: true,
+                ("profileId", entry.Manifest.ProfileId),
+                ("rulePackCount", entry.Manifest.RulePacks.Count)));
         }
 
         if (string.Equals(target.TargetKind, RuleProfileApplyTargetKinds.SessionLedger, StringComparison.Ordinal))
         {
-            changes.Add(new RuleProfilePreviewItem(
-                Kind: RuleProfilePreviewChangeKinds.SessionReplayRequired,
-                Summary: "Session ledger targets may require replay or rebind after a profile-driven runtime change.",
-                SubjectId: target.TargetId,
-                RequiresConfirmation: true));
+            changes.Add(PreviewItem(
+                kind: RuleProfilePreviewChangeKinds.SessionReplayRequired,
+                summaryKey: "ruleprofile.preview.session-replay-required",
+                subjectId: target.TargetId,
+                requiresConfirmation: true,
+                ("targetKind", target.TargetKind),
+                ("targetId", target.TargetId)));
         }
 
         return changes.ToArray();
@@ -177,22 +185,61 @@ public sealed class DefaultRuleProfileApplicationService : IRuleProfileApplicati
 
         if (string.Equals(entry.Publication.Visibility, ArtifactVisibilityModes.LocalOnly, StringComparison.Ordinal))
         {
-            warnings.Add(new RuntimeInspectorWarning(
-                Kind: RuntimeInspectorWarningKinds.Trust,
-                Severity: RuntimeInspectorWarningSeverityLevels.Info,
-                Message: "Profile is derived from local-only RulePacks and is not portable to public catalogs without republishing.",
-                SubjectId: entry.Manifest.ProfileId));
+            warnings.Add(Warning(
+                kind: RuntimeInspectorWarningKinds.Trust,
+                severity: RuntimeInspectorWarningSeverityLevels.Info,
+                messageKey: "ruleprofile.preview.warning.local-only",
+                subjectId: entry.Manifest.ProfileId,
+                ("profileId", entry.Manifest.ProfileId),
+                ("visibility", entry.Publication.Visibility)));
         }
 
         if (entry.Manifest.RulePacks.Count == 0)
         {
-            warnings.Add(new RuntimeInspectorWarning(
-                Kind: RuntimeInspectorWarningKinds.ProviderBinding,
-                Severity: RuntimeInspectorWarningSeverityLevels.Info,
-                Message: "Profile resolves to the built-in base runtime without additional RulePacks.",
-                SubjectId: entry.Manifest.ProfileId));
+            warnings.Add(Warning(
+                kind: RuntimeInspectorWarningKinds.ProviderBinding,
+                severity: RuntimeInspectorWarningSeverityLevels.Info,
+                messageKey: "ruleprofile.preview.warning.builtin-only",
+                subjectId: entry.Manifest.ProfileId,
+                ("profileId", entry.Manifest.ProfileId),
+                ("rulesetId", entry.Manifest.RulesetId)));
         }
 
         return warnings.ToArray();
     }
+
+    private static RuleProfilePreviewItem PreviewItem(
+        string kind,
+        string summaryKey,
+        string subjectId,
+        bool requiresConfirmation = false,
+        params (string Name, object? Value)[] parameters)
+    {
+        return new RuleProfilePreviewItem(
+            Kind: kind,
+            Summary: summaryKey,
+            SubjectId: subjectId,
+            RequiresConfirmation: requiresConfirmation,
+            SummaryKey: summaryKey,
+            SummaryParameters: parameters.Select(static parameter => Param(parameter.Name, parameter.Value)).ToArray());
+    }
+
+    private static RuntimeInspectorWarning Warning(
+        string kind,
+        string severity,
+        string messageKey,
+        string subjectId,
+        params (string Name, object? Value)[] parameters)
+    {
+        return new RuntimeInspectorWarning(
+            Kind: kind,
+            Severity: severity,
+            Message: messageKey,
+            SubjectId: subjectId,
+            MessageKey: messageKey,
+            MessageParameters: parameters.Select(static parameter => Param(parameter.Name, parameter.Value)).ToArray());
+    }
+
+    private static RulesetExplainParameter Param(string name, object? value)
+        => new(name, RulesetCapabilityBridge.FromObject(value));
 }

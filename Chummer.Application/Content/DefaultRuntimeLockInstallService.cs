@@ -1,5 +1,6 @@
 using Chummer.Contracts.Content;
 using Chummer.Contracts.Owners;
+using Chummer.Contracts.Rulesets;
 
 namespace Chummer.Application.Content;
 
@@ -30,19 +31,26 @@ public sealed class DefaultRuntimeLockInstallService : IRuntimeLockInstallServic
 
         List<RuntimeLockInstallPreviewItem> changes =
         [
-            new(
-                Kind: RuntimeLockInstallPreviewChangeKinds.RuntimeLockPinned,
-                Summary: $"Pin runtime '{entry.RuntimeLock.RuntimeFingerprint}' to {target.TargetKind} '{target.TargetId}'.",
-                SubjectId: entry.LockId)
+            PreviewItem(
+                kind: RuntimeLockInstallPreviewChangeKinds.RuntimeLockPinned,
+                summaryKey: "runtime.lock.install.preview.runtime-lock-pinned",
+                subjectId: entry.LockId,
+                requiresConfirmation: false,
+                ("lockId", entry.LockId),
+                ("runtimeFingerprint", entry.RuntimeLock.RuntimeFingerprint),
+                ("targetKind", target.TargetKind),
+                ("targetId", target.TargetId))
         ];
         List<RuntimeInspectorWarning> warnings = BuildWarnings(entry);
         if (string.Equals(target.TargetKind, RuleProfileApplyTargetKinds.SessionLedger, StringComparison.Ordinal))
         {
-            changes.Add(new RuntimeLockInstallPreviewItem(
-                Kind: RuntimeLockInstallPreviewChangeKinds.SessionReplayRequired,
-                Summary: "Session ledger targets may require replay or rebind after a runtime-lock change.",
-                SubjectId: target.TargetId,
-                RequiresConfirmation: true));
+            changes.Add(PreviewItem(
+                kind: RuntimeLockInstallPreviewChangeKinds.SessionReplayRequired,
+                summaryKey: "runtime.lock.install.preview.session-replay-required",
+                subjectId: target.TargetId,
+                requiresConfirmation: true,
+                ("targetKind", target.TargetKind),
+                ("targetId", target.TargetId)));
         }
 
         bool requiresConfirmation = changes.Any(change => change.RequiresConfirmation);
@@ -129,22 +137,61 @@ public sealed class DefaultRuntimeLockInstallService : IRuntimeLockInstallServic
         List<RuntimeInspectorWarning> warnings = [];
         if (entry.RuntimeLock.RulePacks.Count == 0)
         {
-            warnings.Add(new RuntimeInspectorWarning(
-                Kind: RuntimeInspectorWarningKinds.ProviderBinding,
-                Severity: RuntimeInspectorWarningSeverityLevels.Info,
-                Message: "Runtime lock resolves to built-in content without additional RulePacks.",
-                SubjectId: entry.LockId));
+            warnings.Add(Warning(
+                kind: RuntimeInspectorWarningKinds.ProviderBinding,
+                severity: RuntimeInspectorWarningSeverityLevels.Info,
+                messageKey: "runtime.lock.install.warning.builtin-only",
+                subjectId: entry.LockId,
+                ("lockId", entry.LockId),
+                ("runtimeFingerprint", entry.RuntimeLock.RuntimeFingerprint)));
         }
 
         if (string.Equals(entry.Visibility, ArtifactVisibilityModes.LocalOnly, StringComparison.Ordinal))
         {
-            warnings.Add(new RuntimeInspectorWarning(
-                Kind: RuntimeInspectorWarningKinds.Trust,
-                Severity: RuntimeInspectorWarningSeverityLevels.Info,
-                Message: "Runtime lock is local-only and will need export or publication before other owners can reuse it.",
-                SubjectId: entry.LockId));
+            warnings.Add(Warning(
+                kind: RuntimeInspectorWarningKinds.Trust,
+                severity: RuntimeInspectorWarningSeverityLevels.Info,
+                messageKey: "runtime.lock.install.warning.local-only",
+                subjectId: entry.LockId,
+                ("lockId", entry.LockId),
+                ("visibility", entry.Visibility)));
         }
 
         return warnings;
     }
+
+    private static RuntimeLockInstallPreviewItem PreviewItem(
+        string kind,
+        string summaryKey,
+        string subjectId,
+        bool requiresConfirmation = false,
+        params (string Name, object? Value)[] parameters)
+    {
+        return new RuntimeLockInstallPreviewItem(
+            Kind: kind,
+            Summary: summaryKey,
+            SubjectId: subjectId,
+            RequiresConfirmation: requiresConfirmation,
+            SummaryKey: summaryKey,
+            SummaryParameters: parameters.Select(static parameter => Param(parameter.Name, parameter.Value)).ToArray());
+    }
+
+    private static RuntimeInspectorWarning Warning(
+        string kind,
+        string severity,
+        string messageKey,
+        string subjectId,
+        params (string Name, object? Value)[] parameters)
+    {
+        return new RuntimeInspectorWarning(
+            Kind: kind,
+            Severity: severity,
+            Message: messageKey,
+            SubjectId: subjectId,
+            MessageKey: messageKey,
+            MessageParameters: parameters.Select(static parameter => Param(parameter.Name, parameter.Value)).ToArray());
+    }
+
+    private static RulesetExplainParameter Param(string name, object? value)
+        => new(name, RulesetCapabilityBridge.FromObject(value));
 }

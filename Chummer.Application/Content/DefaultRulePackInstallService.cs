@@ -35,29 +35,38 @@ public sealed class DefaultRulePackInstallService : IRulePackInstallService
         string resolvedRulesetId = ResolveRulesetId(entry, rulesetId);
         List<RulePackInstallPreviewItem> changes =
         [
-            new(
-                Kind: RulePackInstallPreviewChangeKinds.InstallStateChanged,
-                Summary: $"Install RulePack '{entry.Manifest.PackId}' to {target.TargetKind} '{target.TargetId}'.",
-                SubjectId: entry.Manifest.PackId)
+            PreviewItem(
+                kind: RulePackInstallPreviewChangeKinds.InstallStateChanged,
+                summaryKey: "rulepack.install.preview.install-state-changed",
+                subjectId: entry.Manifest.PackId,
+                requiresConfirmation: false,
+                ("packId", entry.Manifest.PackId),
+                ("version", entry.Manifest.Version),
+                ("targetKind", target.TargetKind),
+                ("targetId", target.TargetId))
         ];
         List<RuntimeInspectorWarning> warnings = BuildWarnings(entry);
 
         if (entry.Manifest.Capabilities.Count > 0)
         {
-            changes.Add(new RulePackInstallPreviewItem(
-                Kind: RulePackInstallPreviewChangeKinds.RuntimeReviewRequired,
-                Summary: $"RulePack '{entry.Manifest.PackId}' contributes {entry.Manifest.Capabilities.Count} runtime capability binding(s).",
-                SubjectId: entry.Manifest.PackId,
-                RequiresConfirmation: true));
+            changes.Add(PreviewItem(
+                kind: RulePackInstallPreviewChangeKinds.RuntimeReviewRequired,
+                summaryKey: "rulepack.install.preview.runtime-review-required",
+                subjectId: entry.Manifest.PackId,
+                requiresConfirmation: true,
+                ("packId", entry.Manifest.PackId),
+                ("capabilityCount", entry.Manifest.Capabilities.Count)));
         }
 
         if (string.Equals(target.TargetKind, RuleProfileApplyTargetKinds.SessionLedger, StringComparison.Ordinal))
         {
-            changes.Add(new RulePackInstallPreviewItem(
-                Kind: RulePackInstallPreviewChangeKinds.SessionReplayRequired,
-                Summary: "Session ledger targets may require replay or rebind after a RulePack install.",
-                SubjectId: target.TargetId,
-                RequiresConfirmation: true));
+            changes.Add(PreviewItem(
+                kind: RulePackInstallPreviewChangeKinds.SessionReplayRequired,
+                summaryKey: "rulepack.install.preview.session-replay-required",
+                subjectId: target.TargetId,
+                requiresConfirmation: true,
+                ("targetKind", target.TargetKind),
+                ("targetId", target.TargetId)));
         }
 
         bool requiresConfirmation = changes.Any(change => change.RequiresConfirmation);
@@ -150,22 +159,61 @@ public sealed class DefaultRulePackInstallService : IRulePackInstallService
         List<RuntimeInspectorWarning> warnings = [];
         if (string.Equals(entry.Publication.Visibility, ArtifactVisibilityModes.LocalOnly, StringComparison.Ordinal))
         {
-            warnings.Add(new RuntimeInspectorWarning(
-                Kind: RuntimeInspectorWarningKinds.Trust,
-                Severity: RuntimeInspectorWarningSeverityLevels.Info,
-                Message: "RulePack is local-only and will need publishing or export before other owners can reuse it.",
-                SubjectId: entry.Manifest.PackId));
+            warnings.Add(Warning(
+                kind: RuntimeInspectorWarningKinds.Trust,
+                severity: RuntimeInspectorWarningSeverityLevels.Info,
+                messageKey: "rulepack.install.warning.local-only",
+                subjectId: entry.Manifest.PackId,
+                ("packId", entry.Manifest.PackId),
+                ("visibility", entry.Publication.Visibility)));
         }
 
         if (entry.Manifest.Capabilities.Count == 0)
         {
-            warnings.Add(new RuntimeInspectorWarning(
-                Kind: RuntimeInspectorWarningKinds.ProviderBinding,
-                Severity: RuntimeInspectorWarningSeverityLevels.Info,
-                Message: "RulePack installs as content-only data without additional capability bindings.",
-                SubjectId: entry.Manifest.PackId));
+            warnings.Add(Warning(
+                kind: RuntimeInspectorWarningKinds.ProviderBinding,
+                severity: RuntimeInspectorWarningSeverityLevels.Info,
+                messageKey: "rulepack.install.warning.content-only",
+                subjectId: entry.Manifest.PackId,
+                ("packId", entry.Manifest.PackId),
+                ("version", entry.Manifest.Version)));
         }
 
         return warnings;
     }
+
+    private static RulePackInstallPreviewItem PreviewItem(
+        string kind,
+        string summaryKey,
+        string subjectId,
+        bool requiresConfirmation = false,
+        params (string Name, object? Value)[] parameters)
+    {
+        return new RulePackInstallPreviewItem(
+            Kind: kind,
+            Summary: summaryKey,
+            SubjectId: subjectId,
+            RequiresConfirmation: requiresConfirmation,
+            SummaryKey: summaryKey,
+            SummaryParameters: parameters.Select(static parameter => Param(parameter.Name, parameter.Value)).ToArray());
+    }
+
+    private static RuntimeInspectorWarning Warning(
+        string kind,
+        string severity,
+        string messageKey,
+        string subjectId,
+        params (string Name, object? Value)[] parameters)
+    {
+        return new RuntimeInspectorWarning(
+            Kind: kind,
+            Severity: severity,
+            Message: messageKey,
+            SubjectId: subjectId,
+            MessageKey: messageKey,
+            MessageParameters: parameters.Select(static parameter => Param(parameter.Name, parameter.Value)).ToArray());
+    }
+
+    private static RulesetExplainParameter Param(string name, object? value)
+        => new(name, RulesetCapabilityBridge.FromObject(value));
 }

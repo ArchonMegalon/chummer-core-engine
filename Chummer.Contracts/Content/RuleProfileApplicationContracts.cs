@@ -1,3 +1,5 @@
+using Chummer.Contracts.Rulesets;
+
 namespace Chummer.Contracts.Content;
 
 public static class RuleProfileApplyTargetKinds
@@ -33,7 +35,9 @@ public sealed record RuleProfilePreviewItem(
     string Kind,
     string Summary,
     string? SubjectId = null,
-    bool RequiresConfirmation = false);
+    bool RequiresConfirmation = false,
+    string? SummaryKey = null,
+    IReadOnlyList<RulesetExplainParameter>? SummaryParameters = null);
 
 public sealed record RuleProfilePreviewReceipt(
     string ProfileId,

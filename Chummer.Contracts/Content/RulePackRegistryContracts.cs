@@ -1,3 +1,5 @@
+using Chummer.Contracts.Rulesets;
+
 namespace Chummer.Contracts.Content;
 
 public static class RulePackPublicationStatuses
@@ -109,7 +111,9 @@ public sealed record RulePackInstallPreviewItem(
     string Kind,
     string Summary,
     string SubjectId,
-    bool RequiresConfirmation = false);
+    bool RequiresConfirmation = false,
+    string? SummaryKey = null,
+    IReadOnlyList<RulesetExplainParameter>? SummaryParameters = null);
 
 public sealed record RulePackInstallPreviewReceipt(
     string PackId,
