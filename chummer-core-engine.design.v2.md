@@ -398,6 +398,16 @@ It only emits structured outputs that other repos may feed into:
 
 ## 13. First milestones for this repo
 
+### Milestone A0 — Contract canon and repo purification
+Deliver:
+- move presentation-owned contract families out of core-owned source and keep only engine-authored shared DTOs in the canonical contracts package
+- move hosted-service contract families such as AI gateway, Hub, publication, approval, transcript, and media queue DTOs into run-services-owned contracts
+- remove browser-only infrastructure packages from the core root or relocate them to presentation-owned source
+- quarantine legacy helper tools that are not required for deterministic engine compilation or verification
+Exit:
+- the core repo root contains only engine, ruleset, canonical shared-contract, and engine-test surfaces
+- presentation, run-services, browser, and legacy helper ownership is expressed as repo boundaries instead of comments or audit findings
+
 ### Milestone A1 — Localization-safe Explain API
 Deliver:
 - key/parameter-based explain DTOs
@@ -435,9 +445,10 @@ Exit:
 
 ## 14. What Codex Instance A should do first
 
-1. replace human-readable explain strings with localization keys
-2. formalize typed capability contracts
-3. lock RuntimeLock fingerprint tests
-4. add delta-only session replay
-5. add Build Lab simulation DTOs
-6. add semantic seeds for media-generating repos
+1. complete Milestone A0 contract canon and repo purification
+2. replace human-readable explain strings with localization keys
+3. formalize typed capability contracts
+4. lock RuntimeLock fingerprint tests
+5. add delta-only session replay
+6. add Build Lab simulation DTOs
+7. add semantic seeds for media-generating repos

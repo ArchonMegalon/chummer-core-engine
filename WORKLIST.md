@@ -74,6 +74,10 @@ Purpose: queue actionable items and run them in order without losing momentum.
 | WL-061 | done | P1 | Delta-only overlay replay hardening. | agent | Added `SessionOverlayEventValidator` guardrails to block absolute tracker writes (`currentValue`/`absoluteValue`) during event replay. |
 | WL-062 | done | P2 | Relationship/heat reusable simulation primitives. | agent | Added contracts and deterministic service for heat thresholds, public-awareness transforms, favor debt, downtime, addiction/healing schedules, and faction response seeds. |
 | WL-063 | done | P2 | BuildIdea localization-safe key lineage extension. | agent | `BuildIdeaCard` now exposes optional key/parameter fields (`TitleKey`, `SummaryKey`, `CoreLoopKey`) to avoid prose-only cross-boundary DTO dependence. |
+| WL-064 | queued | P1 | Milestone A0: extract presentation-owned contract families from core root. | agent | Target `Chummer.Presentation.Contracts`; leave only engine-authored shared DTOs in canonical contracts and move workbench/shell/browse/workflow surfaces to presentation-owned source/package. |
+| WL-065 | queued | P1 | Milestone A0: extract hosted-service contract families from core root. | agent | Target `Chummer.RunServices.Contracts`; move AI gateway, Hub/publication/review, approval, transcript, and media queue DTO families to run-services-owned contracts and keep core consuming package references only. |
+| WL-066 | queued | P2 | Milestone A0: remove browser-only infrastructure ownership from core root. | agent | Target `Chummer.Infrastructure.Browser`; relocate IndexedDB/browser storage infrastructure to presentation-owned source and keep core free of browser runtime dependencies. |
+| WL-067 | queued | P2 | Milestone A0: quarantine legacy helper tools that are not engine-owned. | agent | Target root legacy helper projects such as `ChummerDataViewer`, `CrashHandler`, `TextblockConverter`, and `Translator`; move them out of the engine repo or demote them to external/oracle ownership with explicit boundary docs. |
 
 ## Intake Template
 Add new items at the bottom:

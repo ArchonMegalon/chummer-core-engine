@@ -1,5 +1,8 @@
 mode: prepend
 items:
+- Add milestone mapping or executable queue work for Non-engine authority surfaces
+  such as presentation contracts, run-service contracts, browser infrastructure, and
+  legacy tools still live in the core repo root..
 - Canonicalize core-owned contract surfaces so only `Chummer.Engine.Contracts` remains
   authoritative and presentation/run-service contract source leaves the engine repo.
 - Move presentation-specific contract families out of core-owned source and leave
