@@ -115,6 +115,35 @@ public class RuleProfileRegistryServiceTests
     }
 
     [TestMethod]
+    public void Default_registry_service_builds_deterministic_overlay_runtime_from_equivalent_rulepack_sets()
+    {
+        DefaultRuleProfileRegistryService serviceA = CreateServiceWithRulePacks(
+        [
+            CreateRulePack("zeta-pack", "1.0.0", RulePackCapabilityIds.ValidateCharacter),
+            CreateRulePack("alpha-pack", "1.0.0", RulePackCapabilityIds.ValidateCharacter, RulePackCapabilityIds.ContentCatalog)
+        ]);
+        DefaultRuleProfileRegistryService serviceB = CreateServiceWithRulePacks(
+        [
+            CreateRulePack("alpha-pack", "1.0.0", RulePackCapabilityIds.ContentCatalog, RulePackCapabilityIds.ValidateCharacter),
+            CreateRulePack("zeta-pack", "1.0.0", RulePackCapabilityIds.ValidateCharacter)
+        ]);
+
+        RuleProfileRegistryEntry overlayA = serviceA.Get(OwnerScope.LocalSingleUser, "local.sr5.current-overlays", RulesetDefaults.Sr5)!;
+        RuleProfileRegistryEntry overlayB = serviceB.Get(OwnerScope.LocalSingleUser, "local.sr5.current-overlays", RulesetDefaults.Sr5)!;
+
+        CollectionAssert.AreEqual(
+            overlayA.Manifest.RulePacks.Select(static pack => $"{pack.RulePack.Id}@{pack.RulePack.Version}").ToArray(),
+            overlayB.Manifest.RulePacks.Select(static pack => $"{pack.RulePack.Id}@{pack.RulePack.Version}").ToArray());
+        CollectionAssert.AreEqual(
+            overlayA.Manifest.RuntimeLock.RulePacks.Select(static pack => $"{pack.Id}@{pack.Version}").ToArray(),
+            overlayB.Manifest.RuntimeLock.RulePacks.Select(static pack => $"{pack.Id}@{pack.Version}").ToArray());
+        CollectionAssert.AreEqual(
+            overlayA.Manifest.RuntimeLock.ProviderBindings.Select(static binding => $"{binding.Key}={binding.Value}").ToArray(),
+            overlayB.Manifest.RuntimeLock.ProviderBindings.Select(static binding => $"{binding.Key}={binding.Value}").ToArray());
+        Assert.AreEqual(overlayA.Manifest.RuntimeLock.RuntimeFingerprint, overlayB.Manifest.RuntimeLock.RuntimeFingerprint);
+    }
+
+    [TestMethod]
     public void Default_registry_service_prefers_owner_backed_profile_publication_metadata_when_present()
     {
         DefaultRuleProfileRegistryService service = new(
@@ -341,6 +370,56 @@ public class RuleProfileRegistryServiceTests
             new RuleProfilePublicationStoreStub(),
             new RuleProfileInstallStateStoreStub(),
             new DefaultRuntimeFingerprintService());
+    }
+
+    private static DefaultRuleProfileRegistryService CreateServiceWithRulePacks(IReadOnlyList<RulePackRegistryEntry> rulePacks)
+    {
+        return new DefaultRuleProfileRegistryService(
+            new RulesetPluginRegistry([new StubRulesetPlugin(RulesetDefaults.Sr5, "Shadowrun Fifth Edition", schemaVersion: 5)]),
+            new RulePackRegistryServiceStub(rulePacks),
+            new RuleProfileManifestStoreStub(),
+            new RuleProfilePublicationStoreStub(),
+            new RuleProfileInstallStateStoreStub(),
+            new DefaultRuntimeFingerprintService());
+    }
+
+    private static RulePackRegistryEntry CreateRulePack(string packId, string version, params string[] capabilityIds)
+    {
+        return new RulePackRegistryEntry(
+            new RulePackManifest(
+                PackId: packId,
+                Version: version,
+                Title: $"{packId} title",
+                Author: "GM",
+                Description: "Campaign overlay.",
+                Targets: [RulesetDefaults.Sr5],
+                EngineApiVersion: "rulepack-v1",
+                DependsOn: [],
+                ConflictsWith: [],
+                Visibility: ArtifactVisibilityModes.LocalOnly,
+                TrustTier: ArtifactTrustTiers.LocalOnly,
+                Assets:
+                [
+                    new RulePackAssetDescriptor(
+                        Kind: RulePackAssetKinds.Xml,
+                        Mode: RulePackAssetModes.MergeCatalog,
+                        RelativePath: $"data/{packId}.xml",
+                        Checksum: $"sha256:{packId}")
+                ],
+                Capabilities: capabilityIds
+                    .Select(static capabilityId => new RulePackCapabilityDescriptor(
+                        CapabilityId: capabilityId,
+                        AssetKind: RulePackAssetKinds.Xml,
+                        AssetMode: RulePackAssetModes.MergeCatalog))
+                    .ToArray(),
+                ExecutionPolicies: []),
+            new RulePackPublicationMetadata(
+                OwnerId: "system",
+                Visibility: ArtifactVisibilityModes.LocalOnly,
+                PublicationStatus: RulePackPublicationStatuses.Published,
+                Review: new RulePackReviewDecision(RulePackReviewStates.NotRequired),
+                Shares: []),
+            new ArtifactInstallState(ArtifactInstallStates.Installed));
     }
 
     private sealed class RulePackRegistryServiceStub : IRulePackRegistryService

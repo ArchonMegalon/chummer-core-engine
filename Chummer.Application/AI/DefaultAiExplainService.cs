@@ -48,6 +48,7 @@ public sealed class DefaultAiExplainService : IAiExplainService
         AiSessionDigestProjection? sessionDigest = characterId is null
             ? null
             : _aiDigestService.GetSessionDigest(owner, characterId);
+        sessionDigest = AlignSessionDigest(sessionDigest, runtimeSummary);
         string? requestedCapabilityId = NormalizeOptional(query.CapabilityId) ?? NormalizeOptional(query.ExplainEntryId);
         if (requestedCapabilityId is null)
         {
@@ -76,15 +77,18 @@ public sealed class DefaultAiExplainService : IAiExplainService
             .GetAwaiter()
             .GetResult();
 
-        string explainEntryId = NormalizeOptional(query.ExplainEntryId) ?? descriptor.CapabilityId;
-        string? packId = TryResolvePackId(providerId, runtimeSummary.RulePacks);
+        string? resolvedProviderId = ResolveProviderId(providerId, invocation.Explain);
+        string? packId = ResolvePackId(resolvedProviderId, invocation.Explain, runtimeSummary.RulePacks);
+        string explainEntryId = NormalizeOptional(query.ExplainEntryId)
+            ?? NormalizeOptional(invocation.Explain?.TargetKey)
+            ?? descriptor.CapabilityId;
         string summaryKey = invocation.Explain?.SummaryKey
             ?? (invocation.Diagnostics.Count > 0 ? "ruleset.explain.summary.diagnostic" : "ruleset.explain.summary.default");
         IReadOnlyList<RulesetExplainParameter> summaryParameters = invocation.Explain?.SummaryParameters
             ?? BuildDefaultSummaryParameters(descriptor, runtimeSummary, invocation.Diagnostics.FirstOrDefault());
-        AiExplainValueProvenanceProjection provenance = BuildProvenance(runtimeSummary, sessionDigest, providerId, packId);
-        IReadOnlyList<AiExplainEvidencePointerProjection> evidence = BuildEvidence(runtimeSummary, sessionDigest, descriptor, providerId, packId, invocation);
-        IReadOnlyList<AiExplainTraceStepProjection> trace = BuildTrace(runtimeSummary, sessionDigest, descriptor, providerId, packId, invocation);
+        AiExplainValueProvenanceProjection provenance = BuildProvenance(runtimeSummary, sessionDigest, resolvedProviderId, packId, invocation);
+        IReadOnlyList<AiExplainEvidencePointerProjection> evidence = BuildEvidence(runtimeSummary, sessionDigest, descriptor, resolvedProviderId, packId, invocation);
+        IReadOnlyList<AiExplainTraceStepProjection> trace = BuildTrace(runtimeSummary, sessionDigest, descriptor, resolvedProviderId, packId, invocation);
 
         return new AiExplainValueProjection(
             ExplainEntryId: explainEntryId,
@@ -98,13 +102,13 @@ public sealed class DefaultAiExplainService : IAiExplainService
             CharacterId: characterDigest?.CharacterId,
             CapabilityId: descriptor.CapabilityId,
             InvocationKind: descriptor.InvocationKind,
-            ProviderId: providerId,
+            ProviderId: resolvedProviderId,
             PackId: packId,
             Explainable: descriptor.Explainable,
             SessionSafe: descriptor.SessionSafe,
             ProviderGasBudget: descriptor.DefaultGasBudget.ProviderInstructionLimit,
             RequestGasBudget: descriptor.DefaultGasBudget.RequestInstructionLimit,
-            Fragments: BuildFragments(runtimeSummary, characterDigest, descriptor, providerId, packId, invocation),
+            Fragments: BuildFragments(runtimeSummary, characterDigest, descriptor, resolvedProviderId, packId, invocation),
             Diagnostics: invocation.Diagnostics,
             Provenance: provenance,
             Trace: trace,
@@ -253,7 +257,8 @@ public sealed class DefaultAiExplainService : IAiExplainService
         AiRuntimeSummaryProjection runtimeSummary,
         AiSessionDigestProjection? sessionDigest,
         string? providerId,
-        string? packId)
+        string? packId,
+        RulesetCapabilityInvocationResult invocation)
     {
         return new AiExplainValueProvenanceProjection(
             RuntimeFingerprint: runtimeSummary.RuntimeFingerprint,
@@ -261,7 +266,7 @@ public sealed class DefaultAiExplainService : IAiExplainService
             EngineApiVersion: runtimeSummary.EngineApiVersion,
             CatalogKind: runtimeSummary.CatalogKind,
             RuntimeTitle: runtimeSummary.Title,
-            ProfileId: sessionDigest?.ProfileId,
+            ProfileId: NormalizeOptional(invocation.Explain?.ProfileId) ?? sessionDigest?.ProfileId,
             ProfileTitle: sessionDigest?.ProfileTitle,
             ProviderId: providerId,
             PackId: packId,
@@ -502,7 +507,7 @@ public sealed class DefaultAiExplainService : IAiExplainService
 
     private static string ResolveEntryKind(RulesetCapabilityDescriptor descriptor)
     {
-        if (descriptor.SessionSafe)
+        if (string.Equals(descriptor.CapabilityId, RulePackCapabilityIds.SessionQuickActions, StringComparison.Ordinal))
         {
             return AiExplainEntryKinds.QuickActionAvailability;
         }
@@ -512,9 +517,26 @@ public sealed class DefaultAiExplainService : IAiExplainService
             : AiExplainEntryKinds.CapabilityDescriptor;
     }
 
+    private static string? ResolveProviderId(string? providerId, RulesetExplainTrace? explain)
+    {
+        return NormalizeOptional(providerId)
+            ?? NormalizeOptional(explain?.Providers.FirstOrDefault()?.ProviderId);
+    }
+
+    private static string? ResolvePackId(string? providerId, RulesetExplainTrace? explain, IEnumerable<string> rulePacks)
+    {
+        string? explainPackId = NormalizeOptional(explain?.Providers.FirstOrDefault()?.PackId);
+        if (explainPackId is not null)
+        {
+            return explainPackId;
+        }
+
+        return TryResolvePackId(providerId, rulePacks);
+    }
+
     private static string? TryResolvePackId(string? providerId, IEnumerable<string> rulePacks)
     {
-        if (providerId is null)
+        if (string.IsNullOrWhiteSpace(providerId))
         {
             return null;
         }
@@ -531,6 +553,32 @@ public sealed class DefaultAiExplainService : IAiExplainService
         }
 
         return null;
+    }
+
+    private static AiSessionDigestProjection? AlignSessionDigest(
+        AiSessionDigestProjection? sessionDigest,
+        AiRuntimeSummaryProjection runtimeSummary)
+    {
+        if (sessionDigest is null)
+        {
+            return null;
+        }
+
+        string? sessionRuntimeFingerprint = NormalizeOptional(sessionDigest.RuntimeFingerprint);
+        if (sessionRuntimeFingerprint is not null
+            && !string.Equals(sessionRuntimeFingerprint, runtimeSummary.RuntimeFingerprint, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        string? sessionRulesetId = RulesetDefaults.NormalizeOptional(sessionDigest.RulesetId);
+        if (sessionRulesetId is not null
+            && !string.Equals(sessionRulesetId, runtimeSummary.RulesetId, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        return sessionDigest;
     }
 
     private static string? NormalizeOptional(string? value)

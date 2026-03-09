@@ -37,6 +37,8 @@ public sealed class DefaultRuleProfileRegistryService : IRuleProfileRegistryServ
 
         return plugins
             .SelectMany(plugin => BuildProfiles(plugin, owner))
+            .OrderBy(static entry => entry.Manifest.RulesetId, StringComparer.Ordinal)
+            .ThenBy(static entry => entry.Manifest.ProfileId, StringComparer.Ordinal)
             .ToArray();
     }
 
@@ -63,7 +65,10 @@ public sealed class DefaultRuleProfileRegistryService : IRuleProfileRegistryServ
     private IReadOnlyList<RuleProfileRegistryEntry> BuildProfiles(IRulesetPlugin plugin, OwnerScope owner)
     {
         string rulesetId = plugin.Id.NormalizedValue;
-        IReadOnlyList<RulePackRegistryEntry> rulePacks = _rulePackRegistryService.List(owner, rulesetId);
+        RulePackRegistryEntry[] rulePacks = _rulePackRegistryService.List(owner, rulesetId)
+            .OrderBy(static entry => entry.Manifest.PackId, StringComparer.Ordinal)
+            .ThenBy(static entry => entry.Manifest.Version, StringComparer.Ordinal)
+            .ToArray();
         Dictionary<string, ArtifactInstallState> installStateLookup = _installStateStore.List(owner, rulesetId)
             .ToDictionary(
                 record => CreatePublicationKey(record.ProfileId, record.RulesetId),
@@ -79,12 +84,13 @@ public sealed class DefaultRuleProfileRegistryService : IRuleProfileRegistryServ
             CreateCoreProfile(plugin, publicationLookup, installStateLookup)
         ];
 
-        if (rulePacks.Count > 0)
+        if (rulePacks.Length > 0)
         {
             entries.Add(CreateOverlayProfile(plugin, owner, rulePacks, publicationLookup, installStateLookup));
         }
 
-        foreach (RuleProfileManifestRecord record in _manifestStore.List(owner, rulesetId))
+        foreach (RuleProfileManifestRecord record in _manifestStore.List(owner, rulesetId)
+                     .OrderBy(static record => record.Manifest.ProfileId, StringComparer.Ordinal))
         {
             UpsertEntry(
                 entries,
@@ -156,7 +162,7 @@ public sealed class DefaultRuleProfileRegistryService : IRuleProfileRegistryServ
         string rulesetId = plugin.Id.NormalizedValue;
         string profileId = $"local.{rulesetId}.current-overlays";
         RuleProfilePackSelection[] selections = rulePacks
-            .Select(rulePack => new RuleProfilePackSelection(
+            .Select(static rulePack => new RuleProfilePackSelection(
                 RulePack: new ArtifactVersionReference(rulePack.Manifest.PackId, rulePack.Manifest.Version),
                 Required: true,
                 EnabledByDefault: true))
@@ -251,6 +257,10 @@ public sealed class DefaultRuleProfileRegistryService : IRuleProfileRegistryServ
         IReadOnlyList<RulePackRegistryEntry> rulePacks)
     {
         string rulesetId = plugin.Id.NormalizedValue;
+        RulePackRegistryEntry[] orderedRulePacks = rulePacks
+            .OrderBy(static rulePack => rulePack.Manifest.PackId, StringComparer.Ordinal)
+            .ThenBy(static rulePack => rulePack.Manifest.Version, StringComparer.Ordinal)
+            .ToArray();
         ContentBundleDescriptor bundle = new(
             BundleId: $"official.{rulesetId}.base",
             RulesetId: rulesetId,
@@ -258,12 +268,12 @@ public sealed class DefaultRuleProfileRegistryService : IRuleProfileRegistryServ
             Title: $"{plugin.DisplayName} Base Content",
             Description: $"Built-in base content bundle for {plugin.DisplayName}.",
             AssetPaths: ["data/", "lang/"]);
-        ArtifactVersionReference[] runtimeRulePacks = rulePacks
-            .Select(rulePack => new ArtifactVersionReference(rulePack.Manifest.PackId, rulePack.Manifest.Version))
+        ArtifactVersionReference[] runtimeRulePacks = orderedRulePacks
+            .Select(static rulePack => new ArtifactVersionReference(rulePack.Manifest.PackId, rulePack.Manifest.Version))
             .ToArray();
-        Dictionary<string, string> providerBindings = rulePacks
+        Dictionary<string, string> providerBindings = orderedRulePacks
             .SelectMany(
-                rulePack => rulePack.Manifest.Capabilities.Select(capability => new
+                static rulePack => rulePack.Manifest.Capabilities.Select(capability => new
                 {
                     capability.CapabilityId,
                     ProviderId = $"{rulePack.Manifest.PackId}/{capability.CapabilityId}"
@@ -281,7 +291,7 @@ public sealed class DefaultRuleProfileRegistryService : IRuleProfileRegistryServ
         string runtimeFingerprint = _runtimeFingerprintService.ComputeResolvedRuntimeFingerprint(
             rulesetId,
             [bundle],
-            rulePacks,
+            orderedRulePacks,
             providerBindings,
             EngineApiVersion,
             capabilityAbiVersions);

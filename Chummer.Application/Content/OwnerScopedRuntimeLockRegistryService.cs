@@ -22,7 +22,9 @@ public sealed class OwnerScopedRuntimeLockRegistryService : IRuntimeLockRegistry
     {
         Dictionary<string, RuntimeLockRegistryEntry> entries = _ruleProfileRegistryService.List(owner, rulesetId)
             .GroupBy(profile => profile.Manifest.RuntimeLock.RuntimeFingerprint, StringComparer.Ordinal)
-            .Select(group => ToRegistryEntry(group.First()))
+            .Select(group => ToRegistryEntry(group
+                .OrderBy(static profile => profile.Manifest.ProfileId, StringComparer.Ordinal)
+                .First()))
             .ToDictionary(entry => entry.LockId, StringComparer.Ordinal);
 
         foreach (RuntimeLockRegistryEntry persisted in _runtimeLockStore.List(owner, rulesetId).Entries)

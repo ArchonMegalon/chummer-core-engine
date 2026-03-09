@@ -211,6 +211,44 @@ public class RulePackRegistryServiceTests
         Assert.AreEqual(RegistryEntrySourceKinds.PersistedManifest, persistedOnly.SourceKind);
     }
 
+    [TestMethod]
+    public void Overlay_registry_service_returns_entries_in_deterministic_pack_order()
+    {
+        ContentOverlayCatalog overlaysA = new(
+            BaseDataPath: "/app/data",
+            BaseLanguagePath: "/app/lang",
+            Overlays:
+            [
+                new ContentOverlayPack("zeta-pack", "Zeta Pack", "/packs/zeta", "/packs/zeta/data", "/packs/zeta/lang", 10, true, ContentOverlayModes.MergeCatalog, "Zeta overlay."),
+                new ContentOverlayPack("alpha-pack", "Alpha Pack", "/packs/alpha", "/packs/alpha/data", "/packs/alpha/lang", 90, true, ContentOverlayModes.MergeCatalog, "Alpha overlay.")
+            ]);
+        ContentOverlayCatalog overlaysB = new(
+            BaseDataPath: "/app/data",
+            BaseLanguagePath: "/app/lang",
+            Overlays:
+            [
+                new ContentOverlayPack("alpha-pack", "Alpha Pack", "/packs/alpha", "/packs/alpha/data", "/packs/alpha/lang", 90, true, ContentOverlayModes.MergeCatalog, "Alpha overlay."),
+                new ContentOverlayPack("zeta-pack", "Zeta Pack", "/packs/zeta", "/packs/zeta/data", "/packs/zeta/lang", 10, true, ContentOverlayModes.MergeCatalog, "Zeta overlay.")
+            ]);
+
+        OverlayRulePackRegistryService serviceA = new(
+            new RulePackManifestStoreStub(),
+            new ContentOverlayCatalogServiceStub(overlaysA),
+            new RulesetSelectionPolicyStub(),
+            new RulePackPublicationStoreStub(),
+            new RulePackInstallStateStoreStub());
+        OverlayRulePackRegistryService serviceB = new(
+            new RulePackManifestStoreStub(),
+            new ContentOverlayCatalogServiceStub(overlaysB),
+            new RulesetSelectionPolicyStub(),
+            new RulePackPublicationStoreStub(),
+            new RulePackInstallStateStoreStub());
+
+        CollectionAssert.AreEqual(
+            serviceA.List(OwnerScope.LocalSingleUser, RulesetDefaults.Sr5).Select(static entry => entry.Manifest.PackId).ToArray(),
+            serviceB.List(OwnerScope.LocalSingleUser, RulesetDefaults.Sr5).Select(static entry => entry.Manifest.PackId).ToArray());
+    }
+
     private sealed class ContentOverlayCatalogServiceStub : IContentOverlayCatalogService
     {
         private readonly ContentOverlayCatalog _catalog;

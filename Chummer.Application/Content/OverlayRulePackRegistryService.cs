@@ -53,6 +53,8 @@ public sealed class OverlayRulePackRegistryService : IRulePackRegistryService
         }
 
         return entries
+            .OrderBy(static entry => entry.Manifest.PackId, StringComparer.Ordinal)
+            .ThenBy(static entry => entry.Manifest.Version, StringComparer.Ordinal)
             .ToArray();
     }
 

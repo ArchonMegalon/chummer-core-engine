@@ -7,6 +7,7 @@ using Chummer.Contracts.AI;
 using Chummer.Contracts.BuildLab;
 using Chummer.Contracts.Characters;
 using Chummer.Contracts.Content;
+using Chummer.Contracts.Hub;
 using Chummer.Contracts.Journal;
 using Chummer.Contracts.Owners;
 using Chummer.Contracts.Rulesets;
@@ -31,6 +32,7 @@ internal static class CoreEngineTests
             RuntimeInspectorProjectionIsDeterministicAcrossPackAndBindingOrder();
             RuntimeLockDiffIsDeterministicAndParameterized();
             AiExplainProjectionEmitsStructuredProvenance();
+            AiExplainProjectionPrefersTraceContextOverMismatchedSessionContext();
             LocalizationFallbackHelpersNormalizeLegacyContracts();
             JournalProjectionIsDeterministicAndValidated();
             BuildLabOutputsAreDeterministicAndLocalized();
@@ -399,15 +401,30 @@ internal static class CoreEngineTests
                 RuntimeFingerprint: "sha256:test-runtime",
                 CharacterId: "char-1",
                 CapabilityId: RulePackCapabilityIds.DeriveStat,
-                ExplainEntryId: "initiative.total",
                 RulesetId: RulesetDefaults.Sr5));
 
         AssertEx.NotNull(projection, "Explain service should resolve the seeded explain projection.");
         AssertEx.NotNull(projection!.Provenance, "Explain projections should expose structured provenance.");
         AssertEx.Equal(
+            "initiative.total",
+            projection.ExplainEntryId,
+            "Explain projections should default to the trace target key when the caller omits an explicit explain entry id.");
+        AssertEx.Equal(
+            AiExplainEntryKinds.DerivedValue,
+            projection.Kind,
+            "Derived explain projections should not be reclassified as quick actions merely because the descriptor is session-safe.");
+        AssertEx.Equal(
+            "combat-pack/derive.initiative",
+            projection.ProviderId,
+            "Explain projections should surface the resolved provider id.");
+        AssertEx.Equal(
             "official.sr5.ops",
             projection.Provenance!.ProfileId,
             "Explain provenance should carry the active profile id when a session profile is available.");
+        AssertEx.Equal(
+            "combat-pack/derive.initiative",
+            projection.Provenance.ProviderId,
+            "Explain provenance should preserve the resolved provider id.");
         AssertEx.Equal(
             "combat-pack",
             projection.Provenance.PackId,
@@ -435,6 +452,45 @@ internal static class CoreEngineTests
                 string.Equals(step.Category, "diagnostic", StringComparison.Ordinal)
                 && string.Equals(step.ExplanationKey, "ruleset.diagnostic.soft-cap", StringComparison.Ordinal)),
             "Explain projections should normalize diagnostics into keyed trace steps.");
+    }
+
+    private static void AiExplainProjectionPrefersTraceContextOverMismatchedSessionContext()
+    {
+        DefaultAiExplainService service = new(
+            new AiDigestServiceMismatchedSessionStub(),
+            new RulesetPluginRegistry([new ExplainTestRulesetPlugin()]));
+
+        AiExplainValueProjection? projection = service.GetExplainValue(
+            OwnerScope.LocalSingleUser,
+            new AiExplainValueQuery(
+                RuntimeFingerprint: "sha256:test-runtime",
+                CharacterId: "char-1",
+                CapabilityId: RulePackCapabilityIds.DeriveStat,
+                RulesetId: RulesetDefaults.Sr5));
+
+        AssertEx.NotNull(projection, "Explain service should still resolve a projection when the runtime summary is valid.");
+        AssertEx.Equal(
+            "initiative.total",
+            projection!.ExplainEntryId,
+            "Explain projections should still derive the explain entry id from the trace target.");
+        AssertEx.Equal(
+            "official.sr5.ops",
+            projection.Provenance?.ProfileId,
+            "Explain provenance should prefer the structured trace profile when the current session digest points at another runtime.");
+        AssertEx.Equal(
+            "combat-pack/derive.initiative",
+            projection.ProviderId,
+            "Explain projections should fall back to trace provider ids when the runtime binding map is incomplete.");
+        AssertEx.Equal(
+            "combat-pack",
+            projection.PackId,
+            "Explain projections should fall back to trace pack ids when provider bindings cannot resolve a pack.");
+        AssertEx.True(
+            projection.Evidence is { Count: > 0 }
+            && !projection.Evidence.Any(pointer =>
+                string.Equals(pointer.Kind, RulesetEvidencePointerKinds.RuleProfile, StringComparison.Ordinal)
+                && string.Equals(pointer.Pointer, "wrong-profile", StringComparison.Ordinal)),
+            "Explain evidence should not leak session profile pointers from a mismatched runtime.");
     }
 
     private static void LocalizationFallbackHelpersNormalizeLegacyContracts()
@@ -559,6 +615,34 @@ internal static class CoreEngineTests
             0,
             RuleProfileContractLocalization.ResolvePreviewSummaryParameters(ruleProfilePreview).Count,
             "Rule profile previews should normalize missing parameter lists to empty collections.");
+
+        HubProjectCompatibilityRow compatibilityRow = new(
+            Kind: HubProjectCompatibilityRowKinds.SessionRuntime,
+            Label: "Session Runtime Bundle",
+            State: HubProjectCompatibilityStates.Compatible,
+            CurrentValue: "bundle-ready",
+            RequiredValue: RulePackExecutionEnvironments.SessionRuntimeBundle,
+            Notes: "2 RulePack(s) resolved");
+        AssertEx.Equal(
+            "Session Runtime Bundle",
+            HubProjectCompatibilityContractLocalization.ResolveLabelKey(compatibilityRow),
+            "Hub project compatibility rows should fall back to their label when a key is omitted.");
+        AssertEx.Equal(
+            "bundle-ready",
+            HubProjectCompatibilityContractLocalization.ResolveCurrentValueKey(compatibilityRow),
+            "Hub project compatibility rows should fall back to their current value when a key is omitted.");
+        AssertEx.Equal(
+            RulePackExecutionEnvironments.SessionRuntimeBundle,
+            HubProjectCompatibilityContractLocalization.ResolveRequiredValueKey(compatibilityRow),
+            "Hub project compatibility rows should fall back to their required value when a key is omitted.");
+        AssertEx.Equal(
+            "2 RulePack(s) resolved",
+            HubProjectCompatibilityContractLocalization.ResolveNotesKey(compatibilityRow),
+            "Hub project compatibility rows should fall back to their notes when a key is omitted.");
+        AssertEx.Equal(
+            0,
+            HubProjectCompatibilityContractLocalization.ResolveNotesParameters(compatibilityRow).Count,
+            "Hub project compatibility rows should normalize missing parameter lists to empty collections.");
     }
 
     private static void JournalProjectionIsDeterministicAndValidated()
@@ -1268,6 +1352,60 @@ internal static class CoreEngineTests
                 RequiresBundleRefresh: false,
                 ProfileId: "official.sr5.ops",
                 ProfileTitle: "Official SR5 Ops");
+        }
+    }
+
+    private sealed class AiDigestServiceMismatchedSessionStub : IAiDigestService
+    {
+        public AiRuntimeSummaryProjection? GetRuntimeSummary(OwnerScope owner, string runtimeFingerprint, string? rulesetId = null)
+        {
+            return new AiRuntimeSummaryProjection(
+                RuntimeFingerprint: "sha256:test-runtime",
+                RulesetId: RulesetDefaults.Sr5,
+                Title: "Seattle Ops Runtime",
+                CatalogKind: RuntimeLockCatalogKinds.Saved,
+                EngineApiVersion: "rulepack-v1",
+                ContentBundles: ["official.sr5.base@schema-1"],
+                RulePacks: ["combat-pack@1.2.0", "house-rules@1.0.0"],
+                ProviderBindings: new Dictionary<string, string>(StringComparer.Ordinal),
+                Visibility: ArtifactVisibilityModes.LocalOnly,
+                Description: "Seeded runtime for explain tests.");
+        }
+
+        public AiCharacterDigestProjection? GetCharacterDigest(OwnerScope owner, string characterId)
+        {
+            return new AiCharacterDigestProjection(
+                CharacterId: "char-1",
+                DisplayName: "Rin",
+                RulesetId: RulesetDefaults.Sr5,
+                RuntimeFingerprint: "sha256:test-runtime",
+                Summary: new CharacterFileSummary(
+                    Name: "Rin",
+                    Alias: "Ghost",
+                    Metatype: "Human",
+                    BuildMethod: "priority",
+                    CreatedVersion: "5.0",
+                    AppVersion: "test",
+                    Karma: 23,
+                    Nuyen: 1500m,
+                    Created: true),
+                LastUpdatedUtc: DateTimeOffset.UnixEpoch.AddDays(1),
+                HasSavedWorkspace: true);
+        }
+
+        public AiSessionDigestProjection? GetSessionDigest(OwnerScope owner, string characterId)
+        {
+            return new AiSessionDigestProjection(
+                CharacterId: "char-1",
+                DisplayName: "Rin",
+                RulesetId: RulesetDefaults.Sr5,
+                RuntimeFingerprint: "sha256:other-runtime",
+                SelectionState: SessionRuntimeSelectionStates.Selected,
+                SessionReady: true,
+                BundleFreshness: SessionRuntimeBundleFreshnessStates.Current,
+                RequiresBundleRefresh: false,
+                ProfileId: "wrong-profile",
+                ProfileTitle: "Wrong Profile");
         }
     }
 

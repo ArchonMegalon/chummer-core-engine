@@ -75,8 +75,16 @@ public class HubProjectCompatibilityServiceTests
         Assert.IsNotNull(matrix);
         Assert.AreEqual(HubCatalogItemKinds.RulePack, matrix.Kind);
         Assert.IsTrue(matrix.Rows.Any(row => row.Kind == HubProjectCompatibilityRowKinds.Capabilities && row.CurrentValue == "1"));
-        Assert.IsTrue(matrix.Rows.Any(row => row.Kind == HubProjectCompatibilityRowKinds.SessionRuntime && row.State == HubProjectCompatibilityStates.Compatible));
+        Assert.IsTrue(matrix.Rows.Any(row =>
+            row.Kind == HubProjectCompatibilityRowKinds.SessionRuntime
+            && row.State == HubProjectCompatibilityStates.Compatible
+            && row.LabelKey == "hub.project.compatibility.row.session-runtime.label"
+            && row.CurrentValueKey == "hub.project.compatibility.row.session-runtime.value.session-safe"));
         Assert.IsTrue(matrix.Rows.Any(row => row.Kind == HubProjectCompatibilityRowKinds.HostedPublic && row.State == HubProjectCompatibilityStates.ReviewRequired));
+        Assert.IsTrue(matrix.Rows.Any(row =>
+            row.Kind == HubProjectCompatibilityRowKinds.Capabilities
+            && row.NotesKey == "hub.project.compatibility.notes.capabilities.summary"
+            && row.NotesParameters is { Count: 2 }));
         Assert.IsNotNull(matrix.Capabilities);
         Assert.IsTrue(matrix.Capabilities.Any(capability =>
             capability.CapabilityId == RulePackCapabilityIds.SessionQuickActions
@@ -116,7 +124,10 @@ public class HubProjectCompatibilityServiceTests
 
         Assert.IsNotNull(matrix);
         Assert.AreEqual(HubCatalogItemKinds.BuildKit, matrix.Kind);
-        Assert.IsTrue(matrix.Rows.Any(row => row.Kind == HubProjectCompatibilityRowKinds.SessionRuntime && row.State == HubProjectCompatibilityStates.Blocked));
+        Assert.IsTrue(matrix.Rows.Any(row =>
+            row.Kind == HubProjectCompatibilityRowKinds.SessionRuntime
+            && row.State == HubProjectCompatibilityStates.Blocked
+            && row.NotesKey == "hub.project.compatibility.notes.session-runtime.buildkit-blocked"));
         Assert.IsNotNull(matrix.Capabilities);
         Assert.IsEmpty(matrix.Capabilities);
     }
@@ -157,8 +168,13 @@ public class HubProjectCompatibilityServiceTests
         Assert.IsTrue(matrix.Rows.Any(row =>
             row.Kind == HubProjectCompatibilityRowKinds.InstallState
             && row.CurrentValue == ArtifactInstallStates.Pinned
-            && row.Notes == "workspace-1"));
+            && row.Notes == "workspace-1"
+            && row.CurrentValueKey == "hub.project.compatibility.row.install-state.value.pinned"));
         Assert.IsTrue(matrix.Rows.Any(row => row.Kind == HubProjectCompatibilityRowKinds.Capabilities && row.CurrentValue == "2"));
+        Assert.IsTrue(matrix.Rows.Any(row =>
+            row.Kind == HubProjectCompatibilityRowKinds.SessionRuntime
+            && row.NotesKey == "hub.project.compatibility.notes.session-runtime.resolved-rulepacks"
+            && row.NotesParameters is { Count: 1 }));
         Assert.IsNotNull(matrix.Capabilities);
         Assert.IsTrue(matrix.Capabilities.Any(capability =>
             capability.CapabilityId == RulePackCapabilityIds.DeriveStat

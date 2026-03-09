@@ -68,24 +68,22 @@ public sealed class DefaultHubProjectCompatibilityService : IHubProjectCompatibi
                 Rows:
                 [
                     CreateRulesetRow(candidateRulesetId),
-                    new HubProjectCompatibilityRow(HubProjectCompatibilityRowKinds.EngineApi, "Engine API", HubProjectCompatibilityStates.Informational, entry.Manifest.EngineApiVersion),
-                    new HubProjectCompatibilityRow(HubProjectCompatibilityRowKinds.Visibility, "Visibility", HubProjectCompatibilityStates.Informational, entry.Publication.Visibility),
-                    new HubProjectCompatibilityRow(HubProjectCompatibilityRowKinds.Trust, "Trust Tier", HubProjectCompatibilityStates.Informational, entry.Manifest.TrustTier),
+                    CreateInformationalRow(HubProjectCompatibilityRowKinds.EngineApi, entry.Manifest.EngineApiVersion),
+                    CreateInformationalRow(HubProjectCompatibilityRowKinds.Visibility, entry.Publication.Visibility),
+                    CreateInformationalRow(HubProjectCompatibilityRowKinds.Trust, entry.Manifest.TrustTier),
                     CreateCapabilitiesRow(capabilities),
-                    new HubProjectCompatibilityRow(
+                    CreateExecutionRow(
                         HubProjectCompatibilityRowKinds.SessionRuntime,
-                        "Session Runtime Bundle",
                         ResolveExecutionState(sessionPolicy?.PolicyMode, hasSessionSafeCapability),
                         hasSessionSafeCapability ? "session-safe" : "not-session-safe",
-                        RequiredValue: RulePackExecutionEnvironments.SessionRuntimeBundle,
-                        Notes: sessionPolicy?.PolicyMode),
-                    new HubProjectCompatibilityRow(
+                        RulePackExecutionEnvironments.SessionRuntimeBundle,
+                        sessionPolicy?.PolicyMode),
+                    CreateExecutionRow(
                         HubProjectCompatibilityRowKinds.HostedPublic,
-                        "Hosted/Public Runtime",
                         ResolveExecutionState(hostedPolicy?.PolicyMode, false),
                         hostedPolicy?.PolicyMode ?? "not-declared",
-                        RequiredValue: RulePackExecutionEnvironments.HostedServer,
-                        Notes: hostedPolicy?.MinimumTrustTier)
+                        RulePackExecutionEnvironments.HostedServer,
+                        hostedPolicy?.MinimumTrustTier)
                 ],
                 GeneratedAtUtc: DateTimeOffset.UtcNow,
                 Capabilities: capabilities);
@@ -118,18 +116,17 @@ public sealed class DefaultHubProjectCompatibilityService : IHubProjectCompatibi
             Rows:
             [
                 CreateRulesetRow(entry.Manifest.RulesetId),
-                new HubProjectCompatibilityRow(HubProjectCompatibilityRowKinds.EngineApi, "Engine API", HubProjectCompatibilityStates.Informational, entry.Manifest.RuntimeLock.EngineApiVersion),
-                new HubProjectCompatibilityRow(HubProjectCompatibilityRowKinds.Visibility, "Visibility", HubProjectCompatibilityStates.Informational, entry.Publication.Visibility),
-                new HubProjectCompatibilityRow(HubProjectCompatibilityRowKinds.Trust, "Trust Tier", HubProjectCompatibilityStates.Informational, ResolveTrustTier(entry.Publication.Visibility)),
+                CreateInformationalRow(HubProjectCompatibilityRowKinds.EngineApi, entry.Manifest.RuntimeLock.EngineApiVersion),
+                CreateInformationalRow(HubProjectCompatibilityRowKinds.Visibility, entry.Publication.Visibility),
+                CreateInformationalRow(HubProjectCompatibilityRowKinds.Trust, ResolveTrustTier(entry.Publication.Visibility)),
                 CreateCapabilitiesRow(capabilities),
-                new HubProjectCompatibilityRow(HubProjectCompatibilityRowKinds.RuntimeFingerprint, "Runtime Fingerprint", HubProjectCompatibilityStates.Informational, entry.Manifest.RuntimeLock.RuntimeFingerprint),
-                new HubProjectCompatibilityRow(
-                    HubProjectCompatibilityRowKinds.SessionRuntime,
-                    "Session Runtime Bundle",
+                CreateInformationalRow(HubProjectCompatibilityRowKinds.RuntimeFingerprint, entry.Manifest.RuntimeLock.RuntimeFingerprint),
+                CreateSessionRuntimeSummaryRow(
                     sessionReady ? HubProjectCompatibilityStates.Compatible : HubProjectCompatibilityStates.ReviewRequired,
                     sessionReady ? "session-ready" : "session-review-required",
-                    RequiredValue: RulePackExecutionEnvironments.SessionRuntimeBundle,
-                    Notes: $"{entry.Manifest.RulePacks.Count} selected RulePack(s)")
+                    "hub.project.compatibility.notes.session-runtime.selected-rulepacks",
+                    [Param("rulePackCount", entry.Manifest.RulePacks.Count)],
+                    entry.Manifest.RulePacks.Count.ToString())
             ],
             GeneratedAtUtc: DateTimeOffset.UtcNow,
             Capabilities: capabilities);
@@ -151,21 +148,23 @@ public sealed class DefaultHubProjectCompatibilityService : IHubProjectCompatibi
                 Rows:
                 [
                     CreateRulesetRow(candidateRulesetId),
-                    new HubProjectCompatibilityRow(HubProjectCompatibilityRowKinds.Visibility, "Visibility", HubProjectCompatibilityStates.Informational, entry.Visibility),
-                    new HubProjectCompatibilityRow(HubProjectCompatibilityRowKinds.Trust, "Trust Tier", HubProjectCompatibilityStates.Informational, entry.Manifest.TrustTier),
+                    CreateInformationalRow(HubProjectCompatibilityRowKinds.Visibility, entry.Visibility),
+                    CreateInformationalRow(HubProjectCompatibilityRowKinds.Trust, entry.Manifest.TrustTier),
                     new HubProjectCompatibilityRow(
-                        HubProjectCompatibilityRowKinds.RuntimeRequirements,
-                        "Runtime Requirements",
-                        entry.Manifest.RuntimeRequirements.Count == 0 ? HubProjectCompatibilityStates.Compatible : HubProjectCompatibilityStates.ReviewRequired,
-                        entry.Manifest.RuntimeRequirements.Count.ToString(),
-                        Notes: "BuildKits may require a campaign or profile runtime."),
-                    new HubProjectCompatibilityRow(
-                        HubProjectCompatibilityRowKinds.SessionRuntime,
-                        "Session Runtime Bundle",
+                        Kind: HubProjectCompatibilityRowKinds.RuntimeRequirements,
+                        Label: GetDefaultLabel(HubProjectCompatibilityRowKinds.RuntimeRequirements),
+                        State: entry.Manifest.RuntimeRequirements.Count == 0 ? HubProjectCompatibilityStates.Compatible : HubProjectCompatibilityStates.ReviewRequired,
+                        CurrentValue: entry.Manifest.RuntimeRequirements.Count.ToString(),
+                        Notes: "BuildKits may require a campaign or profile runtime.",
+                        LabelKey: GetDefaultLabelKey(HubProjectCompatibilityRowKinds.RuntimeRequirements),
+                        NotesKey: "hub.project.compatibility.notes.runtime-requirements.buildkit",
+                        NotesParameters: []),
+                    CreateSessionRuntimeSummaryRow(
                         HubProjectCompatibilityStates.Blocked,
                         "workbench-only",
-                        RequiredValue: RulePackExecutionEnvironments.SessionRuntimeBundle,
-                        Notes: "BuildKits are create/career templates, not session-runtime inputs.")
+                        "hub.project.compatibility.notes.session-runtime.buildkit-blocked",
+                        [],
+                        null)
                 ],
                 GeneratedAtUtc: DateTimeOffset.UtcNow,
                 Capabilities: []);
@@ -193,19 +192,25 @@ public sealed class DefaultHubProjectCompatibilityService : IHubProjectCompatibi
             Rows:
             [
                 CreateRulesetRow(entry.RuntimeLock.RulesetId),
-                new HubProjectCompatibilityRow(HubProjectCompatibilityRowKinds.EngineApi, "Engine API", HubProjectCompatibilityStates.Informational, entry.RuntimeLock.EngineApiVersion),
-                new HubProjectCompatibilityRow(HubProjectCompatibilityRowKinds.Visibility, "Visibility", HubProjectCompatibilityStates.Informational, entry.Visibility),
-                new HubProjectCompatibilityRow(HubProjectCompatibilityRowKinds.Trust, "Trust Tier", HubProjectCompatibilityStates.Informational, ResolveTrustTier(entry.Visibility)),
-                new HubProjectCompatibilityRow(HubProjectCompatibilityRowKinds.InstallState, "Install State", HubProjectCompatibilityStates.Informational, entry.Install.State, Notes: entry.Install.InstalledTargetId),
-                CreateCapabilitiesRow(capabilities),
-                new HubProjectCompatibilityRow(HubProjectCompatibilityRowKinds.RuntimeFingerprint, "Runtime Fingerprint", HubProjectCompatibilityStates.Informational, entry.RuntimeLock.RuntimeFingerprint),
+                CreateInformationalRow(HubProjectCompatibilityRowKinds.EngineApi, entry.RuntimeLock.EngineApiVersion),
+                CreateInformationalRow(HubProjectCompatibilityRowKinds.Visibility, entry.Visibility),
+                CreateInformationalRow(HubProjectCompatibilityRowKinds.Trust, ResolveTrustTier(entry.Visibility)),
                 new HubProjectCompatibilityRow(
-                    HubProjectCompatibilityRowKinds.SessionRuntime,
-                    "Session Runtime Bundle",
+                    Kind: HubProjectCompatibilityRowKinds.InstallState,
+                    Label: GetDefaultLabel(HubProjectCompatibilityRowKinds.InstallState),
+                    State: HubProjectCompatibilityStates.Informational,
+                    CurrentValue: entry.Install.State,
+                    Notes: entry.Install.InstalledTargetId,
+                    LabelKey: GetDefaultLabelKey(HubProjectCompatibilityRowKinds.InstallState),
+                    CurrentValueKey: GetValueKey(HubProjectCompatibilityRowKinds.InstallState, entry.Install.State)),
+                CreateCapabilitiesRow(capabilities),
+                CreateInformationalRow(HubProjectCompatibilityRowKinds.RuntimeFingerprint, entry.RuntimeLock.RuntimeFingerprint),
+                CreateSessionRuntimeSummaryRow(
                     HubProjectCompatibilityStates.Compatible,
                     "bundle-ready",
-                    RequiredValue: RulePackExecutionEnvironments.SessionRuntimeBundle,
-                    Notes: $"{entry.RuntimeLock.RulePacks.Count} RulePack(s) resolved")
+                    "hub.project.compatibility.notes.session-runtime.resolved-rulepacks",
+                    [Param("rulePackCount", entry.RuntimeLock.RulePacks.Count)],
+                    entry.RuntimeLock.RulePacks.Count.ToString())
             ],
             GeneratedAtUtc: DateTimeOffset.UtcNow,
             Capabilities: capabilities);
@@ -227,17 +232,101 @@ public sealed class DefaultHubProjectCompatibilityService : IHubProjectCompatibi
     }
 
     private static HubProjectCompatibilityRow CreateRulesetRow(string rulesetId) =>
-        new(HubProjectCompatibilityRowKinds.Ruleset, "Ruleset", HubProjectCompatibilityStates.Compatible, rulesetId);
+        new(
+            Kind: HubProjectCompatibilityRowKinds.Ruleset,
+            Label: GetDefaultLabel(HubProjectCompatibilityRowKinds.Ruleset),
+            State: HubProjectCompatibilityStates.Compatible,
+            CurrentValue: rulesetId,
+            LabelKey: GetDefaultLabelKey(HubProjectCompatibilityRowKinds.Ruleset));
 
     private static HubProjectCompatibilityRow CreateCapabilitiesRow(IReadOnlyList<HubProjectCapabilityDescriptorProjection> capabilities) =>
         new(
-            HubProjectCompatibilityRowKinds.Capabilities,
-            "Capabilities",
-            HubProjectCompatibilityStates.Informational,
-            capabilities.Count.ToString(),
+            Kind: HubProjectCompatibilityRowKinds.Capabilities,
+            Label: GetDefaultLabel(HubProjectCompatibilityRowKinds.Capabilities),
+            State: HubProjectCompatibilityStates.Informational,
+            CurrentValue: capabilities.Count.ToString(),
             Notes: capabilities.Count == 0
                 ? "No typed capability descriptors are published for this runtime."
-                : $"{capabilities.Count(capability => capability.SessionSafe)} session-safe; {capabilities.Count(capability => capability.Explainable)} explainable");
+                : $"{capabilities.Count(capability => capability.SessionSafe)} session-safe; {capabilities.Count(capability => capability.Explainable)} explainable",
+            LabelKey: GetDefaultLabelKey(HubProjectCompatibilityRowKinds.Capabilities),
+            NotesKey: capabilities.Count == 0
+                ? "hub.project.compatibility.notes.capabilities.none"
+                : "hub.project.compatibility.notes.capabilities.summary",
+            NotesParameters: capabilities.Count == 0
+                ? []
+                : [
+                    Param("sessionSafeCount", capabilities.Count(capability => capability.SessionSafe)),
+                    Param("explainableCount", capabilities.Count(capability => capability.Explainable))
+                ]);
+
+    private static HubProjectCompatibilityRow CreateInformationalRow(string kind, string currentValue) =>
+        new(
+            Kind: kind,
+            Label: GetDefaultLabel(kind),
+            State: HubProjectCompatibilityStates.Informational,
+            CurrentValue: currentValue,
+            LabelKey: GetDefaultLabelKey(kind));
+
+    private static HubProjectCompatibilityRow CreateExecutionRow(
+        string kind,
+        string state,
+        string currentValue,
+        string requiredValue,
+        string? notes)
+        => new(
+            Kind: kind,
+            Label: GetDefaultLabel(kind),
+            State: state,
+            CurrentValue: currentValue,
+            RequiredValue: requiredValue,
+            Notes: notes,
+            LabelKey: GetDefaultLabelKey(kind),
+            CurrentValueKey: GetValueKey(kind, currentValue),
+            RequiredValueKey: GetValueKey(kind, requiredValue),
+            NotesKey: notes is null ? null : GetValueKey(kind, notes));
+
+    private static HubProjectCompatibilityRow CreateSessionRuntimeSummaryRow(
+        string state,
+        string currentValue,
+        string notesKey,
+        IReadOnlyList<RulesetExplainParameter> notesParameters,
+        string? notes)
+        => new(
+            Kind: HubProjectCompatibilityRowKinds.SessionRuntime,
+            Label: GetDefaultLabel(HubProjectCompatibilityRowKinds.SessionRuntime),
+            State: state,
+            CurrentValue: currentValue,
+            RequiredValue: RulePackExecutionEnvironments.SessionRuntimeBundle,
+            Notes: notes,
+            LabelKey: GetDefaultLabelKey(HubProjectCompatibilityRowKinds.SessionRuntime),
+            CurrentValueKey: GetValueKey(HubProjectCompatibilityRowKinds.SessionRuntime, currentValue),
+            RequiredValueKey: GetValueKey(HubProjectCompatibilityRowKinds.SessionRuntime, RulePackExecutionEnvironments.SessionRuntimeBundle),
+            NotesKey: notesKey,
+            NotesParameters: notesParameters);
+
+    private static string GetDefaultLabel(string kind) => kind switch
+    {
+        HubProjectCompatibilityRowKinds.Ruleset => "Ruleset",
+        HubProjectCompatibilityRowKinds.EngineApi => "Engine API",
+        HubProjectCompatibilityRowKinds.Visibility => "Visibility",
+        HubProjectCompatibilityRowKinds.Trust => "Trust Tier",
+        HubProjectCompatibilityRowKinds.InstallState => "Install State",
+        HubProjectCompatibilityRowKinds.Capabilities => "Capabilities",
+        HubProjectCompatibilityRowKinds.SessionRuntime => "Session Runtime Bundle",
+        HubProjectCompatibilityRowKinds.HostedPublic => "Hosted/Public Runtime",
+        HubProjectCompatibilityRowKinds.RuntimeFingerprint => "Runtime Fingerprint",
+        HubProjectCompatibilityRowKinds.RuntimeRequirements => "Runtime Requirements",
+        _ => kind
+    };
+
+    private static string GetDefaultLabelKey(string kind) =>
+        $"hub.project.compatibility.row.{kind}.label";
+
+    private static string GetValueKey(string kind, string value) =>
+        $"hub.project.compatibility.row.{kind}.value.{value}";
+
+    private static RulesetExplainParameter Param(string name, object? value) =>
+        new(name, RulesetCapabilityBridge.FromObject(value));
 
     private static string ResolveExecutionState(string? policyMode, bool sessionSafe)
     {

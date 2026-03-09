@@ -136,6 +136,27 @@ public class RuntimeLockRegistryServiceTests
                 RuntimeLock: CreateRuntimeLock("sha256:custom"))));
     }
 
+    [TestMethod]
+    public void Runtime_lock_registry_service_selects_a_deterministic_profile_when_multiple_profiles_share_a_fingerprint()
+    {
+        RuleProfileRegistryEntry alphaProfile = CreateProfile("alpha.profile", "Alpha Runtime", ArtifactVisibilityModes.LocalOnly, "sha256:shared");
+        RuleProfileRegistryEntry zetaProfile = CreateProfile("zeta.profile", "Zeta Runtime", ArtifactVisibilityModes.Public, "sha256:shared");
+
+        OwnerScopedRuntimeLockRegistryService serviceA = new(
+            new RuleProfileRegistryServiceStub([zetaProfile, alphaProfile]),
+            new RuntimeLockStoreStub());
+        OwnerScopedRuntimeLockRegistryService serviceB = new(
+            new RuleProfileRegistryServiceStub([alphaProfile, zetaProfile]),
+            new RuntimeLockStoreStub());
+
+        RuntimeLockRegistryEntry entryA = serviceA.List(OwnerScope.LocalSingleUser, RulesetDefaults.Sr5).Entries.Single();
+        RuntimeLockRegistryEntry entryB = serviceB.List(OwnerScope.LocalSingleUser, RulesetDefaults.Sr5).Entries.Single();
+
+        Assert.AreEqual(entryA.Title, entryB.Title);
+        Assert.AreEqual(entryA.Visibility, entryB.Visibility);
+        Assert.AreEqual(entryA.LockId, entryB.LockId);
+    }
+
     private static RuleProfileRegistryEntry CreateProfile(string profileId, string title, string visibility, string runtimeFingerprint)
     {
         return new RuleProfileRegistryEntry(
