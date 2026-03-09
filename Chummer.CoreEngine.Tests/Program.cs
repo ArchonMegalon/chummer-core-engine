@@ -1819,6 +1819,7 @@ internal static class CoreEngineTests
     {
         string repositoryRoot = GetRepositoryRoot();
         string coreContractsRoot = Path.Combine(repositoryRoot, "Chummer.Contracts");
+        string presentationContractsRoot = Path.Combine(repositoryRoot, "Chummer.Presentation.Contracts");
         string runServicesContractsRoot = Path.Combine(repositoryRoot, "Chummer.RunServices.Contracts");
         string[] hostedConcernDirectories =
         [
@@ -1837,6 +1838,50 @@ internal static class CoreEngineTests
             AssertEx.True(
                 leakedSources.Length == 0,
                 $"Hosted-service contract sources leaked into engine-owned contracts: {string.Join(", ", leakedSources.Select(path => Path.GetRelativePath(repositoryRoot, path)))}.");
+        }
+
+        string corePresentationContractsDirectory = Path.Combine(coreContractsRoot, "Presentation");
+        string[] sharedPresentationContracts =
+        [
+            "AppCommandCatalogResponse.cs",
+            "AppCommandDefinition.cs",
+            "AppCommandIds.cs",
+            "NavigationTabCatalogResponse.cs",
+            "NavigationTabDefinition.cs",
+            "WorkflowSurfaceContracts.cs",
+            "WorkspaceSurfaceActionDefinition.cs"
+        ];
+
+        if (Directory.Exists(corePresentationContractsDirectory))
+        {
+            string[] leakedPresentationContracts = Directory.EnumerateFiles(corePresentationContractsDirectory, "*.cs", SearchOption.TopDirectoryOnly)
+                .Where(path => !sharedPresentationContracts.Contains(Path.GetFileName(path), StringComparer.Ordinal))
+                .ToArray();
+            AssertEx.True(
+                leakedPresentationContracts.Length == 0,
+                $"Presentation-owned contract sources leaked into Chummer.Contracts: {string.Join(", ", leakedPresentationContracts.Select(path => Path.GetRelativePath(repositoryRoot, path)))}.");
+        }
+
+        string[] presentationOwnedContracts =
+        [
+            "BrowseQueryContracts.cs",
+            "BrowseWorkspaceContracts.cs",
+            "BuildKitWorkbenchContracts.cs",
+            "DesignTokenContracts.cs",
+            "JournalPanelContracts.cs",
+            "RulePackWorkbenchContracts.cs",
+            "ShellBootstrapContracts.cs"
+        ];
+
+        foreach (string fileName in presentationOwnedContracts)
+        {
+            string movedContractPath = Path.Combine(presentationContractsRoot, "Presentation", fileName);
+            AssertEx.True(
+                File.Exists(movedContractPath),
+                $"Presentation-owned contract '{fileName}' should live under Chummer.Presentation.Contracts.");
+            AssertEx.True(
+                !File.Exists(Path.Combine(corePresentationContractsDirectory, fileName)),
+                $"Presentation-owned contract '{fileName}' must not remain under Chummer.Contracts.");
         }
 
         string[] hostedContractSources = Directory.EnumerateFiles(runServicesContractsRoot, "*.cs", SearchOption.AllDirectories)

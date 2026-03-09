@@ -2287,7 +2287,7 @@ public class MigrationComplianceTests
     [TestMethod]
     public void Browse_query_contracts_lock_in_search_facet_sort_preset_and_disable_reason_vocabulary()
     {
-        string browseQueryContractsPath = FindPath("Chummer.Contracts", "Presentation", "BrowseQueryContracts.cs");
+        string browseQueryContractsPath = FindPresentationContractsPath("BrowseQueryContracts.cs");
         string browseQueryContractsText = File.ReadAllText(browseQueryContractsPath);
 
         StringAssert.Contains(browseQueryContractsText, "public static class BrowseFacetKinds");
@@ -2389,7 +2389,7 @@ public class MigrationComplianceTests
     [TestMethod]
     public void Rulepack_workbench_contracts_lock_in_library_inspector_graph_validation_and_override_vocabulary()
     {
-        string rulePackWorkbenchContractsPath = FindPath("Chummer.Contracts", "Presentation", "RulePackWorkbenchContracts.cs");
+        string rulePackWorkbenchContractsPath = FindPresentationContractsPath("RulePackWorkbenchContracts.cs");
         string rulePackWorkbenchContractsText = File.ReadAllText(rulePackWorkbenchContractsPath);
 
         StringAssert.Contains(rulePackWorkbenchContractsText, "public static class RulePackWorkbenchSurfaceIds");
@@ -2439,7 +2439,7 @@ public class MigrationComplianceTests
     [TestMethod]
     public void Buildkit_workbench_contracts_lock_in_library_inspector_prompt_and_apply_preview_vocabulary()
     {
-        string buildKitWorkbenchContractsPath = FindPath("Chummer.Contracts", "Presentation", "BuildKitWorkbenchContracts.cs");
+        string buildKitWorkbenchContractsPath = FindPresentationContractsPath("BuildKitWorkbenchContracts.cs");
         string buildKitWorkbenchContractsText = File.ReadAllText(buildKitWorkbenchContractsPath);
 
         StringAssert.Contains(buildKitWorkbenchContractsText, "public static class BuildKitWorkbenchSurfaceIds");
@@ -2462,7 +2462,7 @@ public class MigrationComplianceTests
     [TestMethod]
     public void Journal_panel_contracts_lock_in_notes_ledger_and_timeline_panel_vocabulary()
     {
-        string journalPanelContractsPath = FindPath("Chummer.Contracts", "Presentation", "JournalPanelContracts.cs");
+        string journalPanelContractsPath = FindPresentationContractsPath("JournalPanelContracts.cs");
         string journalPanelContractsText = File.ReadAllText(journalPanelContractsPath);
 
         StringAssert.Contains(journalPanelContractsText, "public static class JournalPanelSurfaceIds");
@@ -2482,7 +2482,7 @@ public class MigrationComplianceTests
     [TestMethod]
     public void Browse_workspace_contracts_lock_in_workspace_and_selection_dialog_vocabulary()
     {
-        string browseWorkspaceContractsPath = FindPath("Chummer.Contracts", "Presentation", "BrowseWorkspaceContracts.cs");
+        string browseWorkspaceContractsPath = FindPresentationContractsPath("BrowseWorkspaceContracts.cs");
         string browseWorkspaceContractsText = File.ReadAllText(browseWorkspaceContractsPath);
 
         StringAssert.Contains(browseWorkspaceContractsText, "public static class BrowseWorkspaceSurfaceIds");
@@ -2568,7 +2568,7 @@ public class MigrationComplianceTests
     [TestMethod]
     public void Design_token_contracts_lock_in_shared_theme_scale_and_touch_vocabulary()
     {
-        string designTokenContractsPath = FindPath("Chummer.Contracts", "Presentation", "DesignTokenContracts.cs");
+        string designTokenContractsPath = FindPresentationContractsPath("DesignTokenContracts.cs");
         string designTokenContractsText = File.ReadAllText(designTokenContractsPath);
 
         StringAssert.Contains(designTokenContractsText, "public static class ThemeModes");
@@ -3583,7 +3583,7 @@ public class MigrationComplianceTests
     [TestMethod]
     public void Shell_and_overview_share_bootstrap_provider_for_startup_contract_data()
     {
-        string shellContractsPath = FindPath("Chummer.Contracts", "Presentation", "ShellBootstrapContracts.cs");
+        string shellContractsPath = FindPresentationContractsPath("ShellBootstrapContracts.cs");
         string shellContractsText = File.ReadAllText(shellContractsPath);
         string providerContractPath = FindPath("Chummer.Presentation", "Shell", "IShellBootstrapDataProvider.cs");
         string providerContractText = File.ReadAllText(providerContractPath);
@@ -3648,7 +3648,7 @@ public class MigrationComplianceTests
     [TestMethod]
     public void Shell_preferences_and_session_are_persisted_through_separate_contracts()
     {
-        string shellContractsPath = FindPath("Chummer.Contracts", "Presentation", "ShellBootstrapContracts.cs");
+        string shellContractsPath = FindPresentationContractsPath("ShellBootstrapContracts.cs");
         string shellContractsText = File.ReadAllText(shellContractsPath);
         string ownerScopePath = FindPath("Chummer.Contracts", "Owners", "OwnerScope.cs");
         string ownerScopeText = File.ReadAllText(ownerScopePath);
@@ -4234,7 +4234,7 @@ public class MigrationComplianceTests
         StringAssert.Contains(presenterCommandsText, "_shellCatalogResolver.ResolveWorkspaceActionsForTab(");
         string shellStatePath = FindPath("Chummer.Presentation", "Shell", "ShellState.cs");
         string shellStateText = File.ReadAllText(shellStatePath);
-        string shellContractsPath = FindPath("Chummer.Contracts", "Presentation", "ShellBootstrapContracts.cs");
+        string shellContractsPath = FindPresentationContractsPath("ShellBootstrapContracts.cs");
         string shellContractsText = File.ReadAllText(shellContractsPath);
         Assert.IsFalse(shellStateText.Contains("RulesetDefaults.Sr5", StringComparison.Ordinal));
         Assert.IsFalse(shellContractsText.Contains("RulesetDefaults.Sr5", StringComparison.Ordinal));
@@ -6062,6 +6062,15 @@ public class MigrationComplianceTests
         }
 
         throw new DirectoryNotFoundException("Could not locate directory: " + Path.Combine(parts));
+    }
+
+    private static string FindPresentationContractsPath(string fileName)
+    {
+        string movedPath = FindPath("Chummer.Presentation.Contracts", "Presentation", fileName);
+        Assert.IsFalse(
+            PathExistsInCandidateRoots("Chummer.Contracts", "Presentation", fileName),
+            $"Presentation-owned contract '{fileName}' should not remain under Chummer.Contracts.");
+        return movedPath;
     }
 
     private static IEnumerable<string?> CandidateRoots()

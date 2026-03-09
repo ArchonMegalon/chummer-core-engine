@@ -1,6 +1,6 @@
+using Chummer.Contracts.Content;
 using Chummer.Contracts.Rulesets;
 using Chummer.Contracts.Workspaces;
-using Chummer.Contracts.Content;
 
 namespace Chummer.Contracts.Presentation;
 

@@ -1,6 +1,4 @@
-mode: append
+mode: replace
 items:
-  - Publish canonical session_events_vnext envelopes in core-owned contracts and mark legacy event payload shapes compatibility-only.
-  - Move hosted AI, media, approval, publication, and other run-service contract families out of core-owned shared contracts so Chummer.Contracts only carries engine-authoritative DTOs.
-  - Unify Explain contracts on localization-safe provenance and evidence envelopes, then add golden JSON fixtures for runtime, explain, and session contracts.
-  - Add core repo-boundary verification that fails when hosted-service concerns or duplicated shared contract sources leak back into engine ownership.
+- Move presentation-specific contract families out of core-owned source and leave
+  only engine-authored shared DTOs in the canonical package.

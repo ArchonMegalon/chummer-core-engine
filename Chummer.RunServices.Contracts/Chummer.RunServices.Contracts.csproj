@@ -9,5 +9,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Chummer.Contracts\Chummer.Contracts.csproj" />
+    <ProjectReference Include="..\Chummer.Presentation.Contracts\Chummer.Presentation.Contracts.csproj" />
   </ItemGroup>
 </Project>
