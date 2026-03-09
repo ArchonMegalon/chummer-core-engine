@@ -10,13 +10,4 @@
   <ItemGroup>
     <ProjectReference Include="..\Chummer.Contracts\Chummer.Contracts.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <Compile Remove="Presentation/AppCommandCatalogResponse.cs" />
-    <Compile Remove="Presentation/AppCommandDefinition.cs" />
-    <Compile Remove="Presentation/AppCommandIds.cs" />
-    <Compile Remove="Presentation/NavigationTabCatalogResponse.cs" />
-    <Compile Remove="Presentation/NavigationTabDefinition.cs" />
-    <Compile Remove="Presentation/WorkflowSurfaceContracts.cs" />
-    <Compile Remove="Presentation/WorkspaceSurfaceActionDefinition.cs" />
-  </ItemGroup>
 </Project>

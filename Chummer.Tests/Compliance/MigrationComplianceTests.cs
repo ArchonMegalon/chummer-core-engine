@@ -1818,7 +1818,7 @@ public class MigrationComplianceTests
     [TestMethod]
     public void Workflow_surface_contracts_lock_in_shared_shell_region_and_workbench_vocabulary()
     {
-        string workflowSurfaceContractsPath = FindPresentationContractsPath("WorkflowSurfaceContracts.cs");
+        string workflowSurfaceContractsPath = FindCorePresentationContractsPath("WorkflowSurfaceContracts.cs");
         string workflowSurfaceContractsText = File.ReadAllText(workflowSurfaceContractsPath);
 
         StringAssert.Contains(workflowSurfaceContractsText, "public static class ShellRegionIds");
@@ -4106,19 +4106,27 @@ public class MigrationComplianceTests
         string workspaceModelsText = File.ReadAllText(workspaceModelsPath);
         string workspaceApiModelsPath = FindPath("Chummer.Contracts", "Workspaces", "WorkspaceApiModels.cs");
         string workspaceApiModelsText = File.ReadAllText(workspaceApiModelsPath);
-        string commandDefinitionPath = FindPresentationContractsPath("AppCommandDefinition.cs");
+        string commandDefinitionPath = FindCorePresentationContractsPath("AppCommandDefinition.cs");
         string commandDefinitionText = File.ReadAllText(commandDefinitionPath);
-        string tabDefinitionPath = FindPresentationContractsPath("NavigationTabDefinition.cs");
+        string tabDefinitionPath = FindCorePresentationContractsPath("NavigationTabDefinition.cs");
         string tabDefinitionText = File.ReadAllText(tabDefinitionPath);
-        string actionDefinitionPath = FindPresentationContractsPath("WorkspaceSurfaceActionDefinition.cs");
+        string actionDefinitionPath = FindCorePresentationContractsPath("WorkspaceSurfaceActionDefinition.cs");
         string actionDefinitionText = File.ReadAllText(actionDefinitionPath);
-        Assert.IsFalse(PathExistsInCandidateRoots("Chummer.Contracts", "Presentation", "AppCommandDefinition.cs"));
-        Assert.IsFalse(PathExistsInCandidateRoots("Chummer.Contracts", "Presentation", "NavigationTabDefinition.cs"));
-        Assert.IsFalse(PathExistsInCandidateRoots("Chummer.Contracts", "Presentation", "WorkspaceSurfaceActionDefinition.cs"));
-        Assert.IsFalse(PathExistsInCandidateRoots("Chummer.Contracts", "Presentation", "WorkflowSurfaceContracts.cs"));
-        Assert.IsFalse(PathExistsInCandidateRoots("Chummer.Contracts", "Presentation", "AppCommandCatalogResponse.cs"));
-        Assert.IsFalse(PathExistsInCandidateRoots("Chummer.Contracts", "Presentation", "AppCommandIds.cs"));
-        Assert.IsFalse(PathExistsInCandidateRoots("Chummer.Contracts", "Presentation", "NavigationTabCatalogResponse.cs"));
+
+        Assert.IsTrue(PathExistsInCandidateRoots("Chummer.Contracts", "Presentation", "AppCommandDefinition.cs"));
+        Assert.IsTrue(PathExistsInCandidateRoots("Chummer.Contracts", "Presentation", "NavigationTabDefinition.cs"));
+        Assert.IsTrue(PathExistsInCandidateRoots("Chummer.Contracts", "Presentation", "WorkspaceSurfaceActionDefinition.cs"));
+        Assert.IsTrue(PathExistsInCandidateRoots("Chummer.Contracts", "Presentation", "WorkflowSurfaceContracts.cs"));
+        Assert.IsTrue(PathExistsInCandidateRoots("Chummer.Contracts", "Presentation", "AppCommandCatalogResponse.cs"));
+        Assert.IsTrue(PathExistsInCandidateRoots("Chummer.Contracts", "Presentation", "AppCommandIds.cs"));
+        Assert.IsTrue(PathExistsInCandidateRoots("Chummer.Contracts", "Presentation", "NavigationTabCatalogResponse.cs"));
+        Assert.IsFalse(PathExistsInCandidateRoots("Chummer.Presentation.Contracts", "Presentation", "AppCommandDefinition.cs"));
+        Assert.IsFalse(PathExistsInCandidateRoots("Chummer.Presentation.Contracts", "Presentation", "NavigationTabDefinition.cs"));
+        Assert.IsFalse(PathExistsInCandidateRoots("Chummer.Presentation.Contracts", "Presentation", "WorkspaceSurfaceActionDefinition.cs"));
+        Assert.IsFalse(PathExistsInCandidateRoots("Chummer.Presentation.Contracts", "Presentation", "WorkflowSurfaceContracts.cs"));
+        Assert.IsFalse(PathExistsInCandidateRoots("Chummer.Presentation.Contracts", "Presentation", "AppCommandCatalogResponse.cs"));
+        Assert.IsFalse(PathExistsInCandidateRoots("Chummer.Presentation.Contracts", "Presentation", "AppCommandIds.cs"));
+        Assert.IsFalse(PathExistsInCandidateRoots("Chummer.Presentation.Contracts", "Presentation", "NavigationTabCatalogResponse.cs"));
         Assert.IsFalse(PathExistsInCandidateRoots("Chummer.Contracts", "Presentation", "AppCommandCatalog.cs"));
         Assert.IsFalse(PathExistsInCandidateRoots("Chummer.Contracts", "Presentation", "NavigationTabCatalog.cs"));
         Assert.IsFalse(PathExistsInCandidateRoots("Chummer.Contracts", "Presentation", "WorkspaceSurfaceActionCatalog.cs"));
@@ -4248,6 +4256,18 @@ public class MigrationComplianceTests
         StringAssert.Contains(fileWorkspaceStoreText, "WorkspacePayloadEnvelope");
         StringAssert.Contains(fileWorkspaceStoreText, "PayloadKind");
         StringAssert.Contains(fileWorkspaceStoreText, "Envelope");
+    }
+
+    [TestMethod]
+    public void Canonical_engine_contract_project_owns_shared_shell_contract_sources()
+    {
+        string coreContractsProjectPath = FindPath("Chummer.Contracts", "Chummer.Contracts.csproj");
+        string coreContractsProjectText = File.ReadAllText(coreContractsProjectPath);
+
+        StringAssert.Contains(coreContractsProjectText, "<AssemblyName>Chummer.Engine.Contracts</AssemblyName>");
+        StringAssert.Contains(coreContractsProjectText, "<PackageId>Chummer.Engine.Contracts</PackageId>");
+        Assert.IsFalse(coreContractsProjectText.Contains(@"..\Chummer.Presentation.Contracts\Presentation\", StringComparison.Ordinal));
+        Assert.IsFalse(coreContractsProjectText.Contains(@"../Chummer.Presentation.Contracts/Presentation/", StringComparison.Ordinal));
     }
 
     [TestMethod]
@@ -6078,6 +6098,15 @@ public class MigrationComplianceTests
             PathExistsInCandidateRoots("Chummer.Contracts", "Presentation", fileName),
             $"Presentation-owned contract '{fileName}' should not remain under Chummer.Contracts.");
         return movedPath;
+    }
+
+    private static string FindCorePresentationContractsPath(string fileName)
+    {
+        string canonicalPath = FindPath("Chummer.Contracts", "Presentation", fileName);
+        Assert.IsFalse(
+            PathExistsInCandidateRoots("Chummer.Presentation.Contracts", "Presentation", fileName),
+            $"Core-owned contract '{fileName}' should not remain under Chummer.Presentation.Contracts.");
+        return canonicalPath;
     }
 
     private static IEnumerable<string?> CandidateRoots()

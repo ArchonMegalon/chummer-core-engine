@@ -7,7 +7,9 @@ items:
   authoritative and presentation/run-service contract source leaves the engine repo.
 - Move presentation-specific contract families out of core-owned source and leave
   only engine-authored shared DTOs in the canonical package.
-- Add milestone mapping or executable queue work for Remaining hardening and integration
-  work is still tracked as coarse queue slices rather than milestone-mapped task coverage..
+- Materialize Remaining hardening and integration work as executable milestone coverage
+  in `WORKLIST.md`, specifically Milestones A6-A9 for contract hardening, Structured
+  Explain API hardening, Runtime/RulePack determinism hardening, and backend integration
+  primitives.
 - Move presentation, hosted-service, browser, and legacy helper surfaces out of core
   so the repo can converge on deterministic engine ownership only.

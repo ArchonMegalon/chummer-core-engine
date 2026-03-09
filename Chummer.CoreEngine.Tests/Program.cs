@@ -39,6 +39,7 @@ internal static class CoreEngineTests
             AiExplainProjectionPrefersTraceContextOverMismatchedSessionContext();
             ContractGoldenJsonFixturesStayStable();
             RepoBoundaryGuardsHostedContractsAndSharedContractOwnership();
+            HardeningBacklogStaysMilestoneMapped();
             LocalizationFallbackHelpersNormalizeLegacyContracts();
             JournalProjectionIsDeterministicAndValidated();
             BuildLabOutputsAreDeterministicAndLocalized();
@@ -1841,31 +1842,46 @@ internal static class CoreEngineTests
         }
 
         string corePresentationContractsDirectory = Path.Combine(coreContractsRoot, "Presentation");
+        string[] coreOwnedSharedContracts =
+        [
+            "AppCommandCatalogResponse.cs",
+            "AppCommandDefinition.cs",
+            "AppCommandIds.cs",
+            "NavigationTabCatalogResponse.cs",
+            "NavigationTabDefinition.cs",
+            "WorkflowSurfaceContracts.cs",
+            "WorkspaceSurfaceActionDefinition.cs"
+        ];
         if (Directory.Exists(corePresentationContractsDirectory))
         {
             string[] leakedPresentationContracts = Directory.EnumerateFiles(corePresentationContractsDirectory, "*.cs", SearchOption.TopDirectoryOnly)
+                .Where(path => !coreOwnedSharedContracts.Contains(Path.GetFileName(path), StringComparer.Ordinal))
                 .ToArray();
             AssertEx.True(
                 leakedPresentationContracts.Length == 0,
                 $"Presentation contract sources leaked into Chummer.Contracts: {string.Join(", ", leakedPresentationContracts.Select(path => Path.GetRelativePath(repositoryRoot, path)))}.");
         }
 
+        foreach (string fileName in coreOwnedSharedContracts)
+        {
+            string canonicalContractPath = Path.Combine(coreContractsRoot, "Presentation", fileName);
+            AssertEx.True(
+                File.Exists(canonicalContractPath),
+                $"Core-owned contract '{fileName}' should live under Chummer.Contracts.");
+            AssertEx.True(
+                !File.Exists(Path.Combine(presentationContractsRoot, "Presentation", fileName)),
+                $"Core-owned contract '{fileName}' must not remain under Chummer.Presentation.Contracts.");
+        }
+
         string[] presentationOwnedContracts =
         [
-            "AppCommandCatalogResponse.cs",
-            "AppCommandDefinition.cs",
-            "AppCommandIds.cs",
             "BrowseQueryContracts.cs",
             "BrowseWorkspaceContracts.cs",
             "BuildKitWorkbenchContracts.cs",
             "DesignTokenContracts.cs",
             "JournalPanelContracts.cs",
-            "NavigationTabCatalogResponse.cs",
-            "NavigationTabDefinition.cs",
             "RulePackWorkbenchContracts.cs",
-            "ShellBootstrapContracts.cs",
-            "WorkflowSurfaceContracts.cs",
-            "WorkspaceSurfaceActionDefinition.cs"
+            "ShellBootstrapContracts.cs"
         ];
 
         foreach (string fileName in presentationOwnedContracts)
@@ -1919,6 +1935,37 @@ internal static class CoreEngineTests
                 && !projectText.Contains(@"../Chummer.Contracts/Hub/", StringComparison.Ordinal),
                 $"Project '{Path.GetRelativePath(repositoryRoot, projectPath)}' reintroduced hosted AI/Hub contract source paths under engine ownership.");
         }
+    }
+
+    private static void HardeningBacklogStaysMilestoneMapped()
+    {
+        string repoRoot = GetRepositoryRoot();
+        string worklistText = File.ReadAllText(Path.Combine(repoRoot, "WORKLIST.md"));
+        string queueText = File.ReadAllText(Path.Combine(repoRoot, ".codex-studio", "published", "QUEUE.generated.yaml"));
+        string designText = File.ReadAllText(Path.Combine(repoRoot, "chummer-core-engine.design.v2.md"));
+
+        AssertEx.True(
+            worklistText.Contains("WL-068", StringComparison.Ordinal)
+            && worklistText.Contains("Milestone A6: contract hardening", StringComparison.Ordinal)
+            && worklistText.Contains("WL-069", StringComparison.Ordinal)
+            && worklistText.Contains("Milestone A7: Structured Explain API hardening", StringComparison.Ordinal)
+            && worklistText.Contains("WL-070", StringComparison.Ordinal)
+            && worklistText.Contains("Milestone A8: Runtime/RulePack determinism hardening", StringComparison.Ordinal)
+            && worklistText.Contains("WL-071", StringComparison.Ordinal)
+            && worklistText.Contains("Milestone A9: backend integration primitives", StringComparison.Ordinal),
+            "Worklist backlog should keep remaining hardening and integration scope decomposed into executable milestones.");
+        AssertEx.True(
+            designText.Contains("### Milestone A6", StringComparison.Ordinal)
+            && designText.Contains("### Milestone A7", StringComparison.Ordinal)
+            && designText.Contains("### Milestone A8", StringComparison.Ordinal)
+            && designText.Contains("### Milestone A9", StringComparison.Ordinal),
+            "Design milestones should explicitly cover the remaining hardening and integration scope.");
+        AssertEx.True(
+            queueText.Contains("Milestones A6-A9", StringComparison.Ordinal),
+            "Published queue overlay should point at the concrete A6-A9 milestone decomposition.");
+        AssertEx.True(
+            !queueText.Contains("Remaining hardening and integration work is still tracked as coarse queue slices rather than milestone-mapped task coverage", StringComparison.Ordinal),
+            "Published queue overlay should not regress back to the coarse hardening/integration queue slice.");
     }
 
     private static bool IsGeneratedOrBuildArtifact(string path)

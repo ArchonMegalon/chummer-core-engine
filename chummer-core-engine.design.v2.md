@@ -441,6 +441,37 @@ Deliver:
 Exit:
 - run-services can build media prompts without parsing character internals
 
+### Milestone A6 — Contract hardening
+Deliver:
+- canonical contract ownership for engine-authored DTOs
+- compatibility and normalization coverage for runtime install, BuildKit, and session seams
+Exit:
+- engine-owned contracts are unambiguous and stable across package boundaries
+
+### Milestone A7 — Structured Explain API hardening
+Deliver:
+- keyed disabled-reason projections
+- provenance-complete explain outputs
+- runtime diff coverage for explain-facing flows
+Exit:
+- explain consumers receive deterministic structured reasons and before/after runtime context
+
+### Milestone A8 — Runtime and RulePack determinism hardening
+Deliver:
+- runtime fingerprint stability coverage
+- compile and provider-binding order regression coverage
+- deterministic pack resolution and compatibility projections
+Exit:
+- equivalent runtime inputs remain order-invariant and reproducible
+
+### Milestone A9 — Journal, validation, and explain-hook integration primitives
+Deliver:
+- reusable journal/ledger/timeline primitives
+- validation and explain-hook composition seams
+- structured backend outputs that presentation/run-services can consume directly
+Exit:
+- downstream repos do not need to re-derive engine mechanics for journal, validation, or explain composition
+
 ---
 
 ## 14. What Codex Instance A should do first
