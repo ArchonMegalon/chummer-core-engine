@@ -1,8 +1,9 @@
 mode: append
 items:
 - Lock Milestones A6-A9 as executable coverage in `WORKLIST.md` and the core milestone
-  registry, with explicit work items for contract hardening, Structured Explain API
-  hardening, Runtime/RulePack determinism hardening, and backend integration primitives.
+  registry, mapping A6.1-A6.3, A7.1-A7.3, A8.1-A8.3, and A9.1-A9.3 as explicit
+  work items for contract hardening, Structured Explain API hardening, Runtime/RulePack
+  determinism hardening, and backend integration primitives.
 - Add milestone mapping or executable queue work for Temporary source-project leaks
   such as `Chummer.Presentation.Contracts` and `Chummer.RunServices.Contracts` still
   need deletion after the contract plane cutover..

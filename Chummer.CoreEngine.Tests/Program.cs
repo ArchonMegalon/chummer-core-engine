@@ -1949,12 +1949,36 @@ internal static class CoreEngineTests
         AssertEx.True(
             worklistText.Contains("WL-068", StringComparison.Ordinal)
             && worklistText.Contains("Milestone A6: contract hardening", StringComparison.Ordinal)
+            && worklistText.Contains("WL-073", StringComparison.Ordinal)
+            && worklistText.Contains("A6.1 canonicalize runtime install and BuildKit DTO ownership", StringComparison.Ordinal)
+            && worklistText.Contains("WL-074", StringComparison.Ordinal)
+            && worklistText.Contains("A6.2 add normalization fixtures for runtime install, BuildKit, and runtime compatibility DTOs", StringComparison.Ordinal)
+            && worklistText.Contains("WL-075", StringComparison.Ordinal)
+            && worklistText.Contains("A6.3 harden session/runtime compatibility projection seams", StringComparison.Ordinal)
             && worklistText.Contains("WL-069", StringComparison.Ordinal)
             && worklistText.Contains("Milestone A7: Structured Explain API hardening", StringComparison.Ordinal)
+            && worklistText.Contains("WL-076", StringComparison.Ordinal)
+            && worklistText.Contains("A7.1 expose keyed disabled-reason payloads across explainable selection/filter surfaces", StringComparison.Ordinal)
+            && worklistText.Contains("WL-077", StringComparison.Ordinal)
+            && worklistText.Contains("A7.2 lock explain provenance and evidence envelopes", StringComparison.Ordinal)
+            && worklistText.Contains("WL-078", StringComparison.Ordinal)
+            && worklistText.Contains("A7.3 add before/after runtime diff explain fixtures", StringComparison.Ordinal)
             && worklistText.Contains("WL-070", StringComparison.Ordinal)
             && worklistText.Contains("Milestone A8: Runtime/RulePack determinism hardening", StringComparison.Ordinal)
+            && worklistText.Contains("WL-079", StringComparison.Ordinal)
+            && worklistText.Contains("A8.1 harden runtime fingerprint byte-stability across ordering variance", StringComparison.Ordinal)
+            && worklistText.Contains("WL-080", StringComparison.Ordinal)
+            && worklistText.Contains("A8.2 add compile-order and provider-binding determinism tests", StringComparison.Ordinal)
+            && worklistText.Contains("WL-081", StringComparison.Ordinal)
+            && worklistText.Contains("A8.3 harden RulePack dependency resolution ordering", StringComparison.Ordinal)
             && worklistText.Contains("WL-071", StringComparison.Ordinal)
             && worklistText.Contains("Milestone A9: backend integration primitives", StringComparison.Ordinal)
+            && worklistText.Contains("WL-082", StringComparison.Ordinal)
+            && worklistText.Contains("A9.1 add journal/ledger timeline projection primitives", StringComparison.Ordinal)
+            && worklistText.Contains("WL-083", StringComparison.Ordinal)
+            && worklistText.Contains("A9.2 add validation summary and failure-envelope primitives", StringComparison.Ordinal)
+            && worklistText.Contains("WL-084", StringComparison.Ordinal)
+            && worklistText.Contains("A9.3 add explain-hook composition seam for backend integrations", StringComparison.Ordinal)
             && worklistText.Contains("WL-072", StringComparison.Ordinal)
             && worklistText.Contains("delete temporary contract source projects after package cutover", StringComparison.Ordinal),
             "Worklist backlog should keep remaining hardening and integration scope decomposed into executable milestones.");
@@ -1965,7 +1989,11 @@ internal static class CoreEngineTests
             && designText.Contains("### Milestone A9", StringComparison.Ordinal),
             "Design milestones should explicitly cover the remaining hardening and integration scope.");
         AssertEx.True(
-            queueText.Contains("Milestones A6-A9", StringComparison.Ordinal),
+            queueText.Contains("Milestones A6-A9", StringComparison.Ordinal)
+            && queueText.Contains("A6.1-A6.3", StringComparison.Ordinal)
+            && queueText.Contains("A7.1-A7.3", StringComparison.Ordinal)
+            && queueText.Contains("A8.1-A8.3", StringComparison.Ordinal)
+            && queueText.Contains("A9.1-A9.3", StringComparison.Ordinal),
             "Published queue overlay should point at the concrete A6-A9 milestone decomposition.");
         AssertEx.True(
             !queueText.Contains("Remaining hardening and integration work is still tracked as coarse queue slices rather than milestone-mapped task coverage", StringComparison.Ordinal),
@@ -1975,9 +2003,36 @@ internal static class CoreEngineTests
             && projectMilestonesText.Contains("A0.5", StringComparison.Ordinal)
             && projectMilestonesText.Contains("WL-072", StringComparison.Ordinal)
             && projectMilestonesText.Contains("A6", StringComparison.Ordinal)
+            && projectMilestonesText.Contains("work_items:", StringComparison.Ordinal)
+            && projectMilestonesText.Contains("id: A6.1", StringComparison.Ordinal)
+            && projectMilestonesText.Contains("worklist: WL-073", StringComparison.Ordinal)
+            && projectMilestonesText.Contains("id: A6.2", StringComparison.Ordinal)
+            && projectMilestonesText.Contains("worklist: WL-074", StringComparison.Ordinal)
+            && projectMilestonesText.Contains("id: A6.3", StringComparison.Ordinal)
+            && projectMilestonesText.Contains("worklist: WL-075", StringComparison.Ordinal)
             && projectMilestonesText.Contains("A7", StringComparison.Ordinal)
+            && projectMilestonesText.Contains("id: A7.1", StringComparison.Ordinal)
+            && projectMilestonesText.Contains("worklist: WL-076", StringComparison.Ordinal)
+            && projectMilestonesText.Contains("id: A7.2", StringComparison.Ordinal)
+            && projectMilestonesText.Contains("worklist: WL-077", StringComparison.Ordinal)
+            && projectMilestonesText.Contains("id: A7.3", StringComparison.Ordinal)
+            && projectMilestonesText.Contains("worklist: WL-078", StringComparison.Ordinal)
             && projectMilestonesText.Contains("A8", StringComparison.Ordinal)
+            && projectMilestonesText.Contains("id: A8.1", StringComparison.Ordinal)
+            && projectMilestonesText.Contains("worklist: WL-079", StringComparison.Ordinal)
+            && projectMilestonesText.Contains("id: A8.2", StringComparison.Ordinal)
+            && projectMilestonesText.Contains("worklist: WL-080", StringComparison.Ordinal)
+            && projectMilestonesText.Contains("id: A8.3", StringComparison.Ordinal)
+            && projectMilestonesText.Contains("worklist: WL-081", StringComparison.Ordinal)
             && projectMilestonesText.Contains("A9", StringComparison.Ordinal),
+            "Project milestone registry should map the A0 follow-through and remaining A6-A9 work explicitly.");
+        AssertEx.True(
+            projectMilestonesText.Contains("id: A9.1", StringComparison.Ordinal)
+            && projectMilestonesText.Contains("worklist: WL-082", StringComparison.Ordinal)
+            && projectMilestonesText.Contains("id: A9.2", StringComparison.Ordinal)
+            && projectMilestonesText.Contains("worklist: WL-083", StringComparison.Ordinal)
+            && projectMilestonesText.Contains("id: A9.3", StringComparison.Ordinal)
+            && projectMilestonesText.Contains("worklist: WL-084", StringComparison.Ordinal),
             "Project milestone registry should map the A0 follow-through and remaining A6-A9 work explicitly.");
     }
 
