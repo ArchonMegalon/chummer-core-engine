@@ -1818,7 +1818,7 @@ public class MigrationComplianceTests
     [TestMethod]
     public void Workflow_surface_contracts_lock_in_shared_shell_region_and_workbench_vocabulary()
     {
-        string workflowSurfaceContractsPath = FindPath("Chummer.Contracts", "Presentation", "WorkflowSurfaceContracts.cs");
+        string workflowSurfaceContractsPath = FindPresentationContractsPath("WorkflowSurfaceContracts.cs");
         string workflowSurfaceContractsText = File.ReadAllText(workflowSurfaceContractsPath);
 
         StringAssert.Contains(workflowSurfaceContractsText, "public static class ShellRegionIds");
@@ -4106,12 +4106,19 @@ public class MigrationComplianceTests
         string workspaceModelsText = File.ReadAllText(workspaceModelsPath);
         string workspaceApiModelsPath = FindPath("Chummer.Contracts", "Workspaces", "WorkspaceApiModels.cs");
         string workspaceApiModelsText = File.ReadAllText(workspaceApiModelsPath);
-        string commandDefinitionPath = FindPath("Chummer.Contracts", "Presentation", "AppCommandDefinition.cs");
+        string commandDefinitionPath = FindPresentationContractsPath("AppCommandDefinition.cs");
         string commandDefinitionText = File.ReadAllText(commandDefinitionPath);
-        string tabDefinitionPath = FindPath("Chummer.Contracts", "Presentation", "NavigationTabDefinition.cs");
+        string tabDefinitionPath = FindPresentationContractsPath("NavigationTabDefinition.cs");
         string tabDefinitionText = File.ReadAllText(tabDefinitionPath);
-        string actionDefinitionPath = FindPath("Chummer.Contracts", "Presentation", "WorkspaceSurfaceActionDefinition.cs");
+        string actionDefinitionPath = FindPresentationContractsPath("WorkspaceSurfaceActionDefinition.cs");
         string actionDefinitionText = File.ReadAllText(actionDefinitionPath);
+        Assert.IsFalse(PathExistsInCandidateRoots("Chummer.Contracts", "Presentation", "AppCommandDefinition.cs"));
+        Assert.IsFalse(PathExistsInCandidateRoots("Chummer.Contracts", "Presentation", "NavigationTabDefinition.cs"));
+        Assert.IsFalse(PathExistsInCandidateRoots("Chummer.Contracts", "Presentation", "WorkspaceSurfaceActionDefinition.cs"));
+        Assert.IsFalse(PathExistsInCandidateRoots("Chummer.Contracts", "Presentation", "WorkflowSurfaceContracts.cs"));
+        Assert.IsFalse(PathExistsInCandidateRoots("Chummer.Contracts", "Presentation", "AppCommandCatalogResponse.cs"));
+        Assert.IsFalse(PathExistsInCandidateRoots("Chummer.Contracts", "Presentation", "AppCommandIds.cs"));
+        Assert.IsFalse(PathExistsInCandidateRoots("Chummer.Contracts", "Presentation", "NavigationTabCatalogResponse.cs"));
         Assert.IsFalse(PathExistsInCandidateRoots("Chummer.Contracts", "Presentation", "AppCommandCatalog.cs"));
         Assert.IsFalse(PathExistsInCandidateRoots("Chummer.Contracts", "Presentation", "NavigationTabCatalog.cs"));
         Assert.IsFalse(PathExistsInCandidateRoots("Chummer.Contracts", "Presentation", "WorkspaceSurfaceActionCatalog.cs"));

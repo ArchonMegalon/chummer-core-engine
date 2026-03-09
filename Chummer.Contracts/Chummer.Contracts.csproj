@@ -10,4 +10,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\Chummer.Presentation.Contracts\Presentation\AppCommandCatalogResponse.cs" Link="Presentation\AppCommandCatalogResponse.cs" />
+    <Compile Include="..\Chummer.Presentation.Contracts\Presentation\AppCommandDefinition.cs" Link="Presentation\AppCommandDefinition.cs" />
+    <Compile Include="..\Chummer.Presentation.Contracts\Presentation\AppCommandIds.cs" Link="Presentation\AppCommandIds.cs" />
+    <Compile Include="..\Chummer.Presentation.Contracts\Presentation\NavigationTabCatalogResponse.cs" Link="Presentation\NavigationTabCatalogResponse.cs" />
+    <Compile Include="..\Chummer.Presentation.Contracts\Presentation\NavigationTabDefinition.cs" Link="Presentation\NavigationTabDefinition.cs" />
+    <Compile Include="..\Chummer.Presentation.Contracts\Presentation\WorkflowSurfaceContracts.cs" Link="Presentation\WorkflowSurfaceContracts.cs" />
+    <Compile Include="..\Chummer.Presentation.Contracts\Presentation\WorkspaceSurfaceActionDefinition.cs" Link="Presentation\WorkspaceSurfaceActionDefinition.cs" />
+  </ItemGroup>
 </Project>

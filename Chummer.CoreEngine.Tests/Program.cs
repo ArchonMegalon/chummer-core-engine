@@ -1841,36 +1841,31 @@ internal static class CoreEngineTests
         }
 
         string corePresentationContractsDirectory = Path.Combine(coreContractsRoot, "Presentation");
-        string[] sharedPresentationContracts =
-        [
-            "AppCommandCatalogResponse.cs",
-            "AppCommandDefinition.cs",
-            "AppCommandIds.cs",
-            "NavigationTabCatalogResponse.cs",
-            "NavigationTabDefinition.cs",
-            "WorkflowSurfaceContracts.cs",
-            "WorkspaceSurfaceActionDefinition.cs"
-        ];
-
         if (Directory.Exists(corePresentationContractsDirectory))
         {
             string[] leakedPresentationContracts = Directory.EnumerateFiles(corePresentationContractsDirectory, "*.cs", SearchOption.TopDirectoryOnly)
-                .Where(path => !sharedPresentationContracts.Contains(Path.GetFileName(path), StringComparer.Ordinal))
                 .ToArray();
             AssertEx.True(
                 leakedPresentationContracts.Length == 0,
-                $"Presentation-owned contract sources leaked into Chummer.Contracts: {string.Join(", ", leakedPresentationContracts.Select(path => Path.GetRelativePath(repositoryRoot, path)))}.");
+                $"Presentation contract sources leaked into Chummer.Contracts: {string.Join(", ", leakedPresentationContracts.Select(path => Path.GetRelativePath(repositoryRoot, path)))}.");
         }
 
         string[] presentationOwnedContracts =
         [
+            "AppCommandCatalogResponse.cs",
+            "AppCommandDefinition.cs",
+            "AppCommandIds.cs",
             "BrowseQueryContracts.cs",
             "BrowseWorkspaceContracts.cs",
             "BuildKitWorkbenchContracts.cs",
             "DesignTokenContracts.cs",
             "JournalPanelContracts.cs",
+            "NavigationTabCatalogResponse.cs",
+            "NavigationTabDefinition.cs",
             "RulePackWorkbenchContracts.cs",
-            "ShellBootstrapContracts.cs"
+            "ShellBootstrapContracts.cs",
+            "WorkflowSurfaceContracts.cs",
+            "WorkspaceSurfaceActionDefinition.cs"
         ];
 
         foreach (string fileName in presentationOwnedContracts)
