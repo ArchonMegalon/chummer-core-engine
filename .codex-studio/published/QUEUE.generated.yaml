@@ -1,5 +1,7 @@
-mode: append
+mode: prepend
 items:
+- Canonicalize core-owned contract surfaces so only `Chummer.Engine.Contracts` remains
+  authoritative and presentation/run-service contract source leaves the engine repo.
 - Move presentation-specific contract families out of core-owned source and leave
   only engine-authored shared DTOs in the canonical package.
 - Add milestone mapping or executable queue work for Remaining hardening and integration
