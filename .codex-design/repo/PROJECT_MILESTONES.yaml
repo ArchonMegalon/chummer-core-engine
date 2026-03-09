@@ -46,18 +46,42 @@ milestones:
     status: open
     mapped_worklist:
       - WL-068
+      - WL-073
+      - WL-074
+      - WL-075
+    notes:
+      - Runtime install, BuildKit, and session compatibility contracts still need explicit canonical ownership and normalization coverage inside engine-owned DTO families.
+      - Completion requires deterministic compatibility projection coverage so presentation and run-services can consume canonical engine answers without duplicating reducer logic.
   - id: A7
     title: Structured Explain API hardening
     status: open
     mapped_worklist:
       - WL-069
+      - WL-076
+      - WL-077
+      - WL-078
+    notes:
+      - Disabled and ineligible outcomes must remain localization-safe key and parameter payloads across engine-owned explain surfaces.
+      - Explain fixtures still need deterministic provenance, evidence, and runtime before or after diff coverage.
   - id: A8
     title: Runtime and RulePack determinism hardening
     status: open
     mapped_worklist:
       - WL-070
+      - WL-079
+      - WL-080
+      - WL-081
+    notes:
+      - Runtime fingerprint, compile order, provider binding, and dependency resolution need explicit regression fixtures for ordering variance.
+      - Completion requires byte-stable runtime lock and fingerprint outputs for equivalent dependency graphs and manifest sets.
   - id: A9
     title: Journal, validation, and explain-hook integration primitives
     status: open
     mapped_worklist:
       - WL-071
+      - WL-082
+      - WL-083
+      - WL-084
+    notes:
+      - Core still needs deterministic backend-facing seams for journal or timeline projections, validation summaries, and explain-hook attachment.
+      - Completion requires structured engine outputs that downstream repos can project directly without re-deriving mechanics or embedding hosted workflow logic.

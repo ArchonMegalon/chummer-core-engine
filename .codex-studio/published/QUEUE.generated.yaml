@@ -1,9 +1,8 @@
 mode: append
 items:
-- Materialize Remaining hardening and integration work as executable milestone coverage
-  in `WORKLIST.md`, specifically Milestones A6-A9 for contract hardening, Structured
-  Explain API hardening, Runtime/RulePack determinism hardening, and backend integration
-  primitives.
+- Lock Milestones A6-A9 as executable coverage in `WORKLIST.md` and the core milestone
+  registry, with explicit work items for contract hardening, Structured Explain API
+  hardening, Runtime/RulePack determinism hardening, and backend integration primitives.
 - Add milestone mapping or executable queue work for Temporary source-project leaks
   such as `Chummer.Presentation.Contracts` and `Chummer.RunServices.Contracts` still
   need deletion after the contract plane cutover..
