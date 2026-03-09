@@ -1,22 +1,9 @@
 mode: append
 items:
-- Add milestone mapping or executable queue work for Non-engine authority surfaces
-  such as presentation contracts, run-service contracts, browser infrastructure, and
-  legacy tools still live in the core repo root..
-- Canonicalize core-owned contract surfaces so only `Chummer.Engine.Contracts` remains
-  authoritative and presentation/run-service contract source leaves the engine repo.
-- Move presentation-specific contract families out of core-owned source and leave
-  only engine-authored shared DTOs in the canonical package.
 - Materialize Remaining hardening and integration work as executable milestone coverage
   in `WORKLIST.md`, specifically Milestones A6-A9 for contract hardening, Structured
   Explain API hardening, Runtime/RulePack determinism hardening, and backend integration
   primitives.
-- Move presentation, hosted-service, browser, and legacy helper surfaces out of core
-  so the repo can converge on deterministic engine ownership only.
-- Finish milestone coverage modeling for core so ETA and completion truth are no longer
-  partial.
-- Add milestone mapping or executable queue work for Cross-repo contract reset work
-  is not yet represented as explicit core milestones..
 - Add milestone mapping or executable queue work for Temporary source-project leaks
   such as `Chummer.Presentation.Contracts` and `Chummer.RunServices.Contracts` still
   need deletion after the contract plane cutover..

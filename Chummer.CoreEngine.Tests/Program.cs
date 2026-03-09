@@ -39,6 +39,7 @@ internal static class CoreEngineTests
             AiExplainProjectionPrefersTraceContextOverMismatchedSessionContext();
             ContractGoldenJsonFixturesStayStable();
             RepoBoundaryGuardsHostedContractsAndSharedContractOwnership();
+            ActiveCoreEngineSolutionStaysPurified();
             HardeningBacklogStaysMilestoneMapped();
             LocalizationFallbackHelpersNormalizeLegacyContracts();
             JournalProjectionIsDeterministicAndValidated();
@@ -1943,6 +1944,7 @@ internal static class CoreEngineTests
         string worklistText = File.ReadAllText(Path.Combine(repoRoot, "WORKLIST.md"));
         string queueText = File.ReadAllText(Path.Combine(repoRoot, ".codex-studio", "published", "QUEUE.generated.yaml"));
         string designText = File.ReadAllText(Path.Combine(repoRoot, "chummer-core-engine.design.v2.md"));
+        string projectMilestonesText = File.ReadAllText(Path.Combine(repoRoot, ".codex-design", "repo", "PROJECT_MILESTONES.yaml"));
 
         AssertEx.True(
             worklistText.Contains("WL-068", StringComparison.Ordinal)
@@ -1952,7 +1954,9 @@ internal static class CoreEngineTests
             && worklistText.Contains("WL-070", StringComparison.Ordinal)
             && worklistText.Contains("Milestone A8: Runtime/RulePack determinism hardening", StringComparison.Ordinal)
             && worklistText.Contains("WL-071", StringComparison.Ordinal)
-            && worklistText.Contains("Milestone A9: backend integration primitives", StringComparison.Ordinal),
+            && worklistText.Contains("Milestone A9: backend integration primitives", StringComparison.Ordinal)
+            && worklistText.Contains("WL-072", StringComparison.Ordinal)
+            && worklistText.Contains("delete temporary contract source projects after package cutover", StringComparison.Ordinal),
             "Worklist backlog should keep remaining hardening and integration scope decomposed into executable milestones.");
         AssertEx.True(
             designText.Contains("### Milestone A6", StringComparison.Ordinal)
@@ -1966,6 +1970,62 @@ internal static class CoreEngineTests
         AssertEx.True(
             !queueText.Contains("Remaining hardening and integration work is still tracked as coarse queue slices rather than milestone-mapped task coverage", StringComparison.Ordinal),
             "Published queue overlay should not regress back to the coarse hardening/integration queue slice.");
+        AssertEx.True(
+            projectMilestonesText.Contains("milestone_coverage_complete: true", StringComparison.Ordinal)
+            && projectMilestonesText.Contains("A0.5", StringComparison.Ordinal)
+            && projectMilestonesText.Contains("WL-072", StringComparison.Ordinal)
+            && projectMilestonesText.Contains("A6", StringComparison.Ordinal)
+            && projectMilestonesText.Contains("A7", StringComparison.Ordinal)
+            && projectMilestonesText.Contains("A8", StringComparison.Ordinal)
+            && projectMilestonesText.Contains("A9", StringComparison.Ordinal),
+            "Project milestone registry should map the A0 follow-through and remaining A6-A9 work explicitly.");
+    }
+
+    private static void ActiveCoreEngineSolutionStaysPurified()
+    {
+        string repoRoot = GetRepositoryRoot();
+        string solutionText = File.ReadAllText(Path.Combine(repoRoot, "Chummer.CoreEngine.sln"));
+        string scopeText = File.ReadAllText(Path.Combine(repoRoot, ".codex-design", "repo", "IMPLEMENTATION_SCOPE.md"));
+        string projectMilestonesText = File.ReadAllText(Path.Combine(repoRoot, ".codex-design", "repo", "PROJECT_MILESTONES.yaml"));
+
+        string[] excludedSolutionProjects =
+        [
+            "Chummer.Presentation.Contracts",
+            "Chummer.RunServices.Contracts",
+            "Chummer.Infrastructure.Browser",
+            "ChummerDataViewer",
+            "CrashHandler",
+            "TextblockConverter",
+            "Translator"
+        ];
+
+        foreach (string projectName in excludedSolutionProjects)
+        {
+            AssertEx.True(
+                !solutionText.Contains($"\"{projectName}\"", StringComparison.Ordinal),
+                $"Active core engine solution must not directly own non-engine project '{projectName}'.");
+        }
+
+        string[] quarantinedSurfaces =
+        [
+            "Chummer.Presentation.Contracts",
+            "Chummer.RunServices.Contracts",
+            "Chummer.Infrastructure.Browser",
+            "ChummerDataViewer",
+            "CrashHandler",
+            "TextblockConverter",
+            "Translator"
+        ];
+
+        foreach (string surface in quarantinedSurfaces)
+        {
+            AssertEx.True(
+                scopeText.Contains(surface, StringComparison.Ordinal),
+                $"Implementation scope should explicitly classify '{surface}' as quarantined non-engine scope.");
+            AssertEx.True(
+                projectMilestonesText.Contains(surface, StringComparison.Ordinal),
+                $"Project milestone registry should explicitly map quarantined surface '{surface}'.");
+        }
     }
 
     private static bool IsGeneratedOrBuildArtifact(string path)

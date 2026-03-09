@@ -1,0 +1,63 @@
+project_id: core
+milestone_coverage_complete: true
+design_coverage_complete: true
+uncovered_scope: []
+milestones:
+  - id: A0.1
+    title: Presentation contract family quarantine
+    status: done
+    mapped_worklist:
+      - WL-064
+    notes:
+      - Chummer.CoreEngine.sln excludes Chummer.Presentation.Contracts from the active engine boundary.
+      - Presentation-owned shell, browse, build-kit, journal, and workbench contract families remain outside canonical engine contract ownership.
+  - id: A0.2
+    title: Hosted-service contract family quarantine
+    status: done
+    mapped_worklist:
+      - WL-065
+    notes:
+      - Chummer.CoreEngine.sln excludes Chummer.RunServices.Contracts from the active engine boundary.
+      - Hosted-service AI and Hub DTO ownership remains mapped to run-services until package cutover deletes the temporary source project.
+  - id: A0.3
+    title: Browser infrastructure quarantine
+    status: done
+    mapped_worklist:
+      - WL-066
+    notes:
+      - Chummer.Infrastructure.Browser is explicitly quarantined out of the active engine solution.
+      - Browser-only IndexedDB and storage adapters remain presentation-owned follow-up scope.
+  - id: A0.4
+    title: Legacy helper quarantine
+    status: done
+    mapped_worklist:
+      - WL-067
+    notes:
+      - ChummerDataViewer, CrashHandler, TextblockConverter, and Translator are classified as non-engine helper surfaces and kept out of the active engine verification boundary.
+  - id: A0.5
+    title: Cross-repo contract reset follow-through
+    status: open
+    mapped_worklist:
+      - WL-072
+    notes:
+      - Temporary presentation and run-services source projects still need deletion after package-only consumers are cut over.
+  - id: A6
+    title: Contract hardening
+    status: open
+    mapped_worklist:
+      - WL-068
+  - id: A7
+    title: Structured Explain API hardening
+    status: open
+    mapped_worklist:
+      - WL-069
+  - id: A8
+    title: Runtime and RulePack determinism hardening
+    status: open
+    mapped_worklist:
+      - WL-070
+  - id: A9
+    title: Journal, validation, and explain-hook integration primitives
+    status: open
+    mapped_worklist:
+      - WL-071
