@@ -20,7 +20,7 @@ public sealed record SessionPendingEventState(
 public sealed record SessionSyncBatch(
     string OverlayId,
     CharacterVersionReference BaseCharacterVersion,
-    IReadOnlyList<SessionEvent> Events,
+    IReadOnlyList<SessionEventEnvelope> Events,
     string? ClientCursor = null);
 
 public sealed record SessionReplayReceipt(

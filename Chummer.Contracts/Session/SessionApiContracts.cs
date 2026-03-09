@@ -49,7 +49,7 @@ public sealed record SessionProfileCatalog(
 public sealed record SessionPatchRequest(
     string OverlayId,
     CharacterVersionReference BaseCharacterVersion,
-    IReadOnlyList<SessionEvent> Events);
+    IReadOnlyList<SessionEventEnvelope> Events);
 
 public sealed record SessionPinUpdateRequest(
     string OverlayId,

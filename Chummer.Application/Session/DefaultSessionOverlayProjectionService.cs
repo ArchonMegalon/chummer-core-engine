@@ -9,7 +9,7 @@ public sealed class DefaultSessionOverlayProjectionService : ISessionOverlayProj
         string overlayId,
         string characterId,
         string runtimeFingerprint,
-        IReadOnlyList<SessionOverlayEventDto> events)
+        IReadOnlyList<SessionEventEnvelope> events)
     {
         Dictionary<string, int> trackers = new(StringComparer.Ordinal);
         HashSet<string> effects = new(StringComparer.Ordinal);
@@ -17,7 +17,7 @@ public sealed class DefaultSessionOverlayProjectionService : ISessionOverlayProj
         List<string> notes = [];
         List<RulesetCapabilityDiagnostic> diagnostics = [];
 
-        foreach (SessionOverlayEventDto item in events.OrderBy(static candidate => candidate.Sequence))
+        foreach (SessionEventEnvelope item in events.OrderBy(static candidate => candidate.Sequence))
         {
             if (!SessionOverlayEventValidator.AllowsEvent(item, diagnostics))
             {
@@ -66,7 +66,7 @@ public sealed class DefaultSessionOverlayProjectionService : ISessionOverlayProj
     }
 
     private static void ApplyTrackerDelta(
-        SessionOverlayEventDto item,
+        SessionEventEnvelope item,
         IDictionary<string, int> trackers,
         int direction,
         ICollection<RulesetCapabilityDiagnostic> diagnostics)
@@ -92,7 +92,7 @@ public sealed class DefaultSessionOverlayProjectionService : ISessionOverlayProj
     }
 
     private static void ApplyEffect(
-        SessionOverlayEventDto item,
+        SessionEventEnvelope item,
         ISet<string> effects,
         bool enabled,
         ICollection<RulesetCapabilityDiagnostic> diagnostics)
@@ -117,7 +117,7 @@ public sealed class DefaultSessionOverlayProjectionService : ISessionOverlayProj
     }
 
     private static void ApplyPin(
-        SessionOverlayEventDto item,
+        SessionEventEnvelope item,
         ISet<string> pins,
         ICollection<RulesetCapabilityDiagnostic> diagnostics)
     {

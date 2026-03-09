@@ -2502,12 +2502,15 @@ public class MigrationComplianceTests
         StringAssert.Contains(trackerContractsText, "public sealed record TrackerThresholdDefinition");
         StringAssert.Contains(trackerContractsText, "public sealed record TrackerDefinition");
         StringAssert.Contains(trackerContractsText, "public sealed record TrackerSnapshot");
+        StringAssert.Contains(sessionContractsText, "public static class SessionEventEnvelopeSchemas");
+        StringAssert.Contains(sessionContractsText, "public sealed record SessionEventEnvelope");
         StringAssert.Contains(sessionContractsText, "public static class SessionEventTypes");
         StringAssert.Contains(sessionContractsText, "public static class SessionSyncStatuses");
         StringAssert.Contains(sessionContractsText, "public sealed record SessionEvent");
         StringAssert.Contains(sessionContractsText, "public sealed record SessionLedger");
         StringAssert.Contains(sessionContractsText, "public sealed record SessionOverlaySnapshot");
         StringAssert.Contains(sessionContractsText, "public sealed record SessionRuntimeBundle");
+        StringAssert.Contains(sessionContractsText, "session_events_vnext");
         StringAssert.Contains(sessionContractsText, "tracker.increment");
         StringAssert.Contains(sessionContractsText, "tracker.decrement");
         StringAssert.Contains(sessionContractsText, "effect.applied");
@@ -2517,9 +2520,11 @@ public class MigrationComplianceTests
         StringAssert.Contains(sessionContractsText, "note.added");
         StringAssert.Contains(sessionContractsText, "pin.changed");
         StringAssert.Contains(sessionContractsText, "CharacterVersionReference BaseCharacterVersion");
+        StringAssert.Contains(sessionContractsText, "IReadOnlyDictionary<string, RulesetCapabilityValue> Payload");
         StringAssert.Contains(sessionContractsText, "IReadOnlyList<TrackerSnapshot> Trackers");
         StringAssert.Contains(sessionContractsText, "IReadOnlyList<TrackerDefinition> Trackers");
         StringAssert.Contains(sessionContractsText, "SignedAtUtc");
+        StringAssert.Contains(sessionContractsText, "[Obsolete(\"Compatibility-only. Use SessionEventEnvelope.\")]");
         Assert.IsFalse(sessionContractsText.Contains("public sealed record SessionTrackerDefinition", StringComparison.Ordinal));
         Assert.IsFalse(sessionContractsText.Contains("public sealed record SessionOverlay(", StringComparison.Ordinal));
         Assert.IsFalse(sessionContractsText.Contains("LuaSource", StringComparison.Ordinal));
@@ -2572,7 +2577,7 @@ public class MigrationComplianceTests
         StringAssert.Contains(sessionSyncContractsText, "public sealed record SessionConflictDiagnostic");
         StringAssert.Contains(sessionSyncContractsText, "public sealed record SessionSyncReceipt");
         StringAssert.Contains(sessionSyncContractsText, "CharacterVersionReference BaseCharacterVersion");
-        StringAssert.Contains(sessionSyncContractsText, "IReadOnlyList<SessionEvent> Events");
+        StringAssert.Contains(sessionSyncContractsText, "IReadOnlyList<SessionEventEnvelope> Events");
         Assert.IsFalse(sessionSyncContractsText.Contains("last-write-wins", StringComparison.OrdinalIgnoreCase));
     }
 
@@ -2634,6 +2639,8 @@ public class MigrationComplianceTests
         StringAssert.Contains(overlayContractsText, "public static class SessionOverlayEventKinds");
         StringAssert.Contains(overlayContractsText, "public sealed record SessionOverlayEventDto");
         StringAssert.Contains(overlayContractsText, "public sealed record SessionOverlayProjection");
+        StringAssert.Contains(overlayContractsText, "[Obsolete(\"Compatibility-only. Use SessionEventEnvelope.\")]");
+        StringAssert.Contains(overlayContractsText, "IReadOnlyList<SessionEventEnvelope> AppliedEvents");
         StringAssert.Contains(projectionServiceText, "public sealed class DefaultSessionOverlayProjectionService");
         StringAssert.Contains(projectionServiceText, "switch (item.EventType)");
         StringAssert.Contains(projectionServiceText, "SessionOverlayEventValidator.AllowsEvent");

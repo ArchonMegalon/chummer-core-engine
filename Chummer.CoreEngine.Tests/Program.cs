@@ -118,8 +118,12 @@ internal static class CoreEngineTests
             runtimeFingerprint: "sha256:test",
             events:
             [
-                new SessionOverlayEventDto(
+                new SessionEventEnvelope(
                     EventId: "evt-2",
+                    OverlayId: "overlay-1",
+                    BaseCharacterVersion: new CharacterVersionReference("char-1", "ver-1", RulesetDefaults.Sr5, "sha256:test"),
+                    DeviceId: "device-1",
+                    ActorId: "actor-1",
                     Sequence: 2,
                     EventType: SessionOverlayEventKinds.TrackerIncrement,
                     Payload: new Dictionary<string, RulesetCapabilityValue>(StringComparer.Ordinal)
@@ -127,8 +131,12 @@ internal static class CoreEngineTests
                         ["absoluteValue"] = RulesetCapabilityBridge.FromObject(2)
                     },
                     CreatedAtUtc: DateTimeOffset.UnixEpoch.AddSeconds(2)),
-                new SessionOverlayEventDto(
+                new SessionEventEnvelope(
                     EventId: "evt-1",
+                    OverlayId: "overlay-1",
+                    BaseCharacterVersion: new CharacterVersionReference("char-1", "ver-1", RulesetDefaults.Sr5, "sha256:test"),
+                    DeviceId: "device-1",
+                    ActorId: "actor-1",
                     Sequence: 1,
                     EventType: SessionOverlayEventKinds.TrackerIncrement,
                     Payload: new Dictionary<string, RulesetCapabilityValue>(StringComparer.Ordinal),

@@ -5,7 +5,7 @@ namespace Chummer.Application.Session;
 
 internal static class SessionOverlayEventValidator
 {
-    public static bool AllowsEvent(SessionOverlayEventDto item, ICollection<RulesetCapabilityDiagnostic> diagnostics)
+    public static bool AllowsEvent(SessionEventEnvelope item, ICollection<RulesetCapabilityDiagnostic> diagnostics)
     {
         if (item.Payload.ContainsKey("currentValue"))
         {

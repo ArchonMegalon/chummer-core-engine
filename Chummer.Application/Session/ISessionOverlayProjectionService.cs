@@ -8,5 +8,5 @@ public interface ISessionOverlayProjectionService
         string overlayId,
         string characterId,
         string runtimeFingerprint,
-        IReadOnlyList<SessionOverlayEventDto> events);
+        IReadOnlyList<SessionEventEnvelope> events);
 }

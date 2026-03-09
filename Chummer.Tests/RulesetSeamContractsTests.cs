@@ -366,7 +366,7 @@ public class RulesetSeamContractsTests
                 Karma: 0m,
                 Nuyen: 0m,
                 Created: true));
-        SessionEvent sessionEvent = new(
+        SessionEventEnvelope sessionEvent = new(
             EventId: "evt-1",
             OverlayId: "overlay-1",
             BaseCharacterVersion: baseCharacterVersion,
@@ -374,7 +374,11 @@ public class RulesetSeamContractsTests
             ActorId: "user-1",
             Sequence: 1,
             EventType: SessionEventTypes.TrackerIncrement,
-            PayloadJson: "{\"trackerId\":\"stun\",\"amount\":1}",
+            Payload: new Dictionary<string, RulesetCapabilityValue>(StringComparer.Ordinal)
+            {
+                ["trackerId"] = RulesetCapabilityBridge.FromObject("stun"),
+                ["amount"] = RulesetCapabilityBridge.FromObject(1)
+            },
             CreatedAtUtc: DateTimeOffset.UtcNow);
         SessionLedger ledger = new(
             OverlayId: "overlay-1",
@@ -542,7 +546,7 @@ public class RulesetSeamContractsTests
             VersionId: "charv-1",
             RulesetId: RulesetDefaults.Sr5,
             RuntimeFingerprint: "runtime-lock-sha256");
-        SessionEvent sessionEvent = new(
+        SessionEventEnvelope sessionEvent = new(
             EventId: "evt-1",
             OverlayId: "overlay-1",
             BaseCharacterVersion: baseCharacterVersion,
@@ -550,7 +554,11 @@ public class RulesetSeamContractsTests
             ActorId: "user-1",
             Sequence: 1,
             EventType: SessionEventTypes.TrackerIncrement,
-            PayloadJson: "{\"trackerId\":\"stun\",\"amount\":1}",
+            Payload: new Dictionary<string, RulesetCapabilityValue>(StringComparer.Ordinal)
+            {
+                ["trackerId"] = RulesetCapabilityBridge.FromObject("stun"),
+                ["amount"] = RulesetCapabilityBridge.FromObject(1)
+            },
             CreatedAtUtc: DateTimeOffset.UtcNow);
         SessionSyncBatch batch = new(
             OverlayId: "overlay-1",
