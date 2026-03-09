@@ -406,7 +406,7 @@ public class MigrationComplianceTests
         string buildKitRegistryServiceContractText = File.ReadAllText(buildKitRegistryServiceContractPath);
         string defaultBuildKitRegistryServicePath = FindPath("Chummer.Application", "Content", "DefaultBuildKitRegistryService.cs");
         string defaultBuildKitRegistryServiceText = File.ReadAllText(defaultBuildKitRegistryServicePath);
-        string hubCatalogContractsPath = FindPath("Chummer.Contracts", "Hub", "HubCatalogContracts.cs");
+        string hubCatalogContractsPath = FindPath("Chummer.RunServices.Contracts", "Hub", "HubCatalogContracts.cs");
         string hubCatalogContractsText = File.ReadAllText(hubCatalogContractsPath);
         string hubCatalogServicePath = FindPath("Chummer.Application", "Hub", "DefaultHubCatalogService.cs");
         string hubCatalogServiceText = File.ReadAllText(hubCatalogServicePath);
@@ -442,9 +442,9 @@ public class MigrationComplianceTests
         string npcVaultRegistryServiceContractText = File.ReadAllText(npcVaultRegistryServiceContractPath);
         string defaultNpcVaultRegistryServicePath = FindPath("Chummer.Application", "Content", "DefaultNpcVaultRegistryService.cs");
         string defaultNpcVaultRegistryServiceText = File.ReadAllText(defaultNpcVaultRegistryServicePath);
-        string hubCatalogContractsPath = FindPath("Chummer.Contracts", "Hub", "HubCatalogContracts.cs");
+        string hubCatalogContractsPath = FindPath("Chummer.RunServices.Contracts", "Hub", "HubCatalogContracts.cs");
         string hubCatalogContractsText = File.ReadAllText(hubCatalogContractsPath);
-        string hubProjectDetailContractsPath = FindPath("Chummer.Contracts", "Hub", "HubProjectDetailContracts.cs");
+        string hubProjectDetailContractsPath = FindPath("Chummer.RunServices.Contracts", "Hub", "HubProjectDetailContracts.cs");
         string hubProjectDetailContractsText = File.ReadAllText(hubProjectDetailContractsPath);
         string hubCatalogServicePath = FindPath("Chummer.Application", "Hub", "DefaultHubCatalogService.cs");
         string hubCatalogServiceText = File.ReadAllText(hubCatalogServicePath);
@@ -737,9 +737,9 @@ public class MigrationComplianceTests
         string hubCatalogEndpointsText = File.ReadAllText(hubCatalogEndpointsPath);
         string hubCatalogServiceContractPath = FindPath("Chummer.Application", "Hub", "IHubCatalogService.cs");
         string hubCatalogServiceContractText = File.ReadAllText(hubCatalogServiceContractPath);
-        string hubCatalogContractsPath = FindPath("Chummer.Contracts", "Hub", "HubCatalogContracts.cs");
+        string hubCatalogContractsPath = FindPath("Chummer.RunServices.Contracts", "Hub", "HubCatalogContracts.cs");
         string hubCatalogContractsText = File.ReadAllText(hubCatalogContractsPath);
-        string hubProjectDetailContractsPath = FindPath("Chummer.Contracts", "Hub", "HubProjectDetailContracts.cs");
+        string hubProjectDetailContractsPath = FindPath("Chummer.RunServices.Contracts", "Hub", "HubProjectDetailContracts.cs");
         string hubProjectDetailContractsText = File.ReadAllText(hubProjectDetailContractsPath);
         string readmePath = FindPath("README.md");
         string readmeText = File.ReadAllText(readmePath);
@@ -827,7 +827,7 @@ public class MigrationComplianceTests
         string hubInstallPreviewServiceContractText = File.ReadAllText(hubInstallPreviewServiceContractPath);
         string hubInstallPreviewServicePath = FindPath("Chummer.Application", "Hub", "DefaultHubInstallPreviewService.cs");
         string hubInstallPreviewServiceText = File.ReadAllText(hubInstallPreviewServicePath);
-        string hubInstallPreviewContractsPath = FindPath("Chummer.Contracts", "Hub", "HubProjectInstallPreviewContracts.cs");
+        string hubInstallPreviewContractsPath = FindPath("Chummer.RunServices.Contracts", "Hub", "HubProjectInstallPreviewContracts.cs");
         string hubInstallPreviewContractsText = File.ReadAllText(hubInstallPreviewContractsPath);
         string serviceRegistrationPath = FindPath("Chummer.Infrastructure", "DependencyInjection", "ServiceCollectionExtensions.cs");
         string serviceRegistrationText = File.ReadAllText(serviceRegistrationPath);
@@ -863,7 +863,7 @@ public class MigrationComplianceTests
         string hubCompatibilityServiceContractText = File.ReadAllText(hubCompatibilityServiceContractPath);
         string hubCompatibilityServicePath = FindPath("Chummer.Application", "Hub", "DefaultHubProjectCompatibilityService.cs");
         string hubCompatibilityServiceText = File.ReadAllText(hubCompatibilityServicePath);
-        string hubCompatibilityContractsPath = FindPath("Chummer.Contracts", "Hub", "HubProjectCompatibilityContracts.cs");
+        string hubCompatibilityContractsPath = FindPath("Chummer.RunServices.Contracts", "Hub", "HubProjectCompatibilityContracts.cs");
         string hubCompatibilityContractsText = File.ReadAllText(hubCompatibilityContractsPath);
         string serviceRegistrationPath = FindPath("Chummer.Infrastructure", "DependencyInjection", "ServiceCollectionExtensions.cs");
         string serviceRegistrationText = File.ReadAllText(serviceRegistrationPath);
@@ -904,7 +904,7 @@ public class MigrationComplianceTests
         string hubModerationServiceContractText = File.ReadAllText(hubModerationServiceContractPath);
         string hubModerationServicePath = FindPath("Chummer.Application", "Hub", "DefaultHubModerationService.cs");
         string hubModerationServiceText = File.ReadAllText(hubModerationServicePath);
-        string hubPublicationContractsPath = FindPath("Chummer.Contracts", "Hub", "HubPublicationContracts.cs");
+        string hubPublicationContractsPath = FindPath("Chummer.RunServices.Contracts", "Hub", "HubPublicationContracts.cs");
         string hubPublicationContractsText = File.ReadAllText(hubPublicationContractsPath);
         string serviceRegistrationPath = FindPath("Chummer.Infrastructure", "DependencyInjection", "ServiceCollectionExtensions.cs");
         string serviceRegistrationText = File.ReadAllText(serviceRegistrationPath);
@@ -1006,7 +1006,7 @@ public class MigrationComplianceTests
         string hubPublisherServiceContractText = File.ReadAllText(hubPublisherServiceContractPath);
         string hubPublisherServicePath = FindPath("Chummer.Application", "Hub", "DefaultHubPublisherService.cs");
         string hubPublisherServiceText = File.ReadAllText(hubPublisherServicePath);
-        string hubPublisherContractsPath = FindPath("Chummer.Contracts", "Hub", "HubPublisherContracts.cs");
+        string hubPublisherContractsPath = FindPath("Chummer.RunServices.Contracts", "Hub", "HubPublisherContracts.cs");
         string hubPublisherContractsText = File.ReadAllText(hubPublisherContractsPath);
         string serviceRegistrationPath = FindPath("Chummer.Infrastructure", "DependencyInjection", "ServiceCollectionExtensions.cs");
         string serviceRegistrationText = File.ReadAllText(serviceRegistrationPath);
@@ -1053,7 +1053,7 @@ public class MigrationComplianceTests
         string hubReviewServiceContractText = File.ReadAllText(hubReviewServiceContractPath);
         string hubReviewServicePath = FindPath("Chummer.Application", "Hub", "DefaultHubReviewService.cs");
         string hubReviewServiceText = File.ReadAllText(hubReviewServicePath);
-        string hubReviewContractsPath = FindPath("Chummer.Contracts", "Hub", "HubReviewContracts.cs");
+        string hubReviewContractsPath = FindPath("Chummer.RunServices.Contracts", "Hub", "HubReviewContracts.cs");
         string hubReviewContractsText = File.ReadAllText(hubReviewContractsPath);
         string serviceRegistrationPath = FindPath("Chummer.Infrastructure", "DependencyInjection", "ServiceCollectionExtensions.cs");
         string serviceRegistrationText = File.ReadAllText(serviceRegistrationPath);
@@ -1097,7 +1097,7 @@ public class MigrationComplianceTests
     [TestMethod]
     public void Hub_project_kind_validation_flows_through_shared_registry()
     {
-        string hubCatalogContractsPath = FindPath("Chummer.Contracts", "Hub", "HubCatalogContracts.cs");
+        string hubCatalogContractsPath = FindPath("Chummer.RunServices.Contracts", "Hub", "HubCatalogContracts.cs");
         string hubCatalogContractsText = File.ReadAllText(hubCatalogContractsPath);
         string hubCatalogEndpointsPath = FindPath("Chummer.Api", "Endpoints", "HubCatalogEndpoints.cs");
         string hubCatalogEndpointsText = File.ReadAllText(hubCatalogEndpointsPath);
@@ -1137,6 +1137,23 @@ public class MigrationComplianceTests
         Assert.IsFalse(hubCompatibilityServiceText.Contains("kind.Trim() switch", StringComparison.Ordinal));
         Assert.IsFalse(hubPublicationServiceText.Contains("NormalizeKindRequired(", StringComparison.Ordinal));
         Assert.IsFalse(hubPublicationServiceText.Contains("NormalizeKindOptional(", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void Hosted_ai_and_hub_contract_families_live_outside_core_owned_contracts()
+    {
+        string runServicesContractsProjectPath = FindPath("Chummer.RunServices.Contracts", "Chummer.RunServices.Contracts.csproj");
+        string runServicesContractsProjectText = File.ReadAllText(runServicesContractsProjectPath);
+        string aiGatewayContractsPath = FindPath("Chummer.RunServices.Contracts", "AI", "AiGatewayContracts.cs");
+        string hubCatalogContractsPath = FindPath("Chummer.RunServices.Contracts", "Hub", "HubCatalogContracts.cs");
+        string coreAiDirectory = FindDirectory("Chummer.Contracts", "AI");
+        string coreHubDirectory = FindDirectory("Chummer.Contracts", "Hub");
+
+        StringAssert.Contains(runServicesContractsProjectText, "<ProjectReference Include=\"..\\Chummer.Contracts\\Chummer.Contracts.csproj\" />");
+        Assert.IsFalse(Directory.EnumerateFiles(coreAiDirectory, "*.cs", SearchOption.TopDirectoryOnly).Any(), "Core-owned contracts should not contain hosted AI contract files.");
+        Assert.IsFalse(Directory.EnumerateFiles(coreHubDirectory, "*.cs", SearchOption.TopDirectoryOnly).Any(), "Core-owned contracts should not contain hosted Hub contract files.");
+        StringAssert.Contains(File.ReadAllText(aiGatewayContractsPath), "namespace Chummer.Contracts.AI;");
+        StringAssert.Contains(File.ReadAllText(hubCatalogContractsPath), "namespace Chummer.Contracts.Hub;");
     }
 
     [TestMethod]
@@ -1383,7 +1400,7 @@ public class MigrationComplianceTests
         string sessionRuntimeBundleCacheStoreText = File.ReadAllText(sessionRuntimeBundleCacheStorePath);
         string browserOfflineCacheServicePath = FindPath("Chummer.Infrastructure.Browser", "Storage", "BrowserSessionOfflineCacheService.cs");
         string browserOfflineCacheServiceText = File.ReadAllText(browserOfflineCacheServicePath);
-        string coachLaunchContractsPath = FindPath("Chummer.Contracts", "AI", "AiCoachLaunchContracts.cs");
+        string coachLaunchContractsPath = FindPath("Chummer.RunServices.Contracts", "AI", "AiCoachLaunchContracts.cs");
         string coachLaunchContractsText = File.ReadAllText(coachLaunchContractsPath);
         string sessionComponentTestsPath = FindPath("Chummer.Tests", "Presentation", "SessionWebComponentTests.cs");
         string sessionComponentTestsText = File.ReadAllText(sessionComponentTestsPath);
@@ -2006,7 +2023,7 @@ public class MigrationComplianceTests
     [TestMethod]
     public void Hub_catalog_contracts_lock_in_item_kind_facet_sort_and_result_vocabulary()
     {
-        string hubCatalogContractsPath = FindPath("Chummer.Contracts", "Hub", "HubCatalogContracts.cs");
+        string hubCatalogContractsPath = FindPath("Chummer.RunServices.Contracts", "Hub", "HubCatalogContracts.cs");
         string hubCatalogContractsText = File.ReadAllText(hubCatalogContractsPath);
 
         StringAssert.Contains(hubCatalogContractsText, "public static class HubCatalogItemKinds");
@@ -2025,7 +2042,7 @@ public class MigrationComplianceTests
     [TestMethod]
     public void Hub_project_detail_contracts_lock_in_fact_dependency_and_action_vocabulary()
     {
-        string hubProjectDetailContractsPath = FindPath("Chummer.Contracts", "Hub", "HubProjectDetailContracts.cs");
+        string hubProjectDetailContractsPath = FindPath("Chummer.RunServices.Contracts", "Hub", "HubProjectDetailContracts.cs");
         string hubProjectDetailContractsText = File.ReadAllText(hubProjectDetailContractsPath);
 
         StringAssert.Contains(hubProjectDetailContractsText, "public static class HubProjectDependencyKinds");
@@ -2047,7 +2064,7 @@ public class MigrationComplianceTests
     [TestMethod]
     public void Hub_project_install_preview_contracts_lock_in_state_change_and_diagnostic_vocabulary()
     {
-        string hubInstallPreviewContractsPath = FindPath("Chummer.Contracts", "Hub", "HubProjectInstallPreviewContracts.cs");
+        string hubInstallPreviewContractsPath = FindPath("Chummer.RunServices.Contracts", "Hub", "HubProjectInstallPreviewContracts.cs");
         string hubInstallPreviewContractsText = File.ReadAllText(hubInstallPreviewContractsPath);
 
         StringAssert.Contains(hubInstallPreviewContractsText, "public static class HubProjectInstallPreviewStates");
@@ -2065,7 +2082,7 @@ public class MigrationComplianceTests
     [TestMethod]
     public void Hub_project_compatibility_contracts_lock_in_row_state_and_matrix_vocabulary()
     {
-        string hubCompatibilityContractsPath = FindPath("Chummer.Contracts", "Hub", "HubProjectCompatibilityContracts.cs");
+        string hubCompatibilityContractsPath = FindPath("Chummer.RunServices.Contracts", "Hub", "HubProjectCompatibilityContracts.cs");
         string hubCompatibilityContractsText = File.ReadAllText(hubCompatibilityContractsPath);
 
         StringAssert.Contains(hubCompatibilityContractsText, "public static class HubProjectCompatibilityRowKinds");
@@ -2607,6 +2624,41 @@ public class MigrationComplianceTests
         StringAssert.Contains(rulesetCapabilityContractsText, "IReadOnlyList<RulesetExplainParameter>? MessageParameters = null");
         StringAssert.Contains(rulesetCapabilityContractsText, "string? TitleKey = null");
         StringAssert.Contains(rulesetCapabilityContractsText, "IReadOnlyList<RulesetExplainParameter>? TitleParameters = null");
+    }
+
+    [TestMethod]
+    public void Explain_trace_contracts_lock_in_localization_safe_provenance_and_evidence_vocabulary()
+    {
+        string explainTracePath = FindPath("Chummer.Contracts", "ExplainTraceDto.cs");
+        string explainTraceText = File.ReadAllText(explainTracePath);
+        string traceStepPath = FindPath("Chummer.Contracts", "TraceStepDto.cs");
+        string traceStepText = File.ReadAllText(traceStepPath);
+        string evidencePath = FindPath("Chummer.Contracts", "ExplainEvidencePointerDto.cs");
+        string evidenceText = File.ReadAllText(evidencePath);
+        string provenancePath = FindPath("Chummer.Contracts", "ExplainProvenanceDto.cs");
+        string provenanceText = File.ReadAllText(provenancePath);
+
+        StringAssert.Contains(explainTraceText, "RulesetCapabilityValue? FinalValue");
+        StringAssert.Contains(explainTraceText, "IReadOnlyList<RulesetExplainParameter> SummaryParameters");
+        StringAssert.Contains(explainTraceText, "ExplainProvenanceDto? Provenance = null");
+        StringAssert.Contains(explainTraceText, "IReadOnlyList<ExplainEvidencePointerDto>? Evidence = null");
+        StringAssert.Contains(traceStepText, "string CapabilityId");
+        StringAssert.Contains(traceStepText, "string? PackId");
+        StringAssert.Contains(traceStepText, "string ExplanationKey");
+        StringAssert.Contains(traceStepText, "IReadOnlyList<RulesetExplainParameter> ExplanationParameters");
+        StringAssert.Contains(traceStepText, "decimal? Modifier = null");
+        StringAssert.Contains(traceStepText, "bool? Certain = null");
+        StringAssert.Contains(evidenceText, "IReadOnlyList<RulesetExplainParameter>? LabelParameters = null");
+        StringAssert.Contains(provenanceText, "public record ExplainProvenanceDto");
+        StringAssert.Contains(provenanceText, "string RuntimeFingerprint");
+        StringAssert.Contains(provenanceText, "IReadOnlyList<string>? RulePacks = null");
+        StringAssert.Contains(provenanceText, "IReadOnlyDictionary<string, string>? ProviderBindings = null");
+        Assert.IsFalse(explainTraceText.Contains("int FinalValue", StringComparison.Ordinal));
+        Assert.IsFalse(explainTraceText.Contains("IReadOnlyDictionary<string, string> SummaryParameters", StringComparison.Ordinal));
+        Assert.IsFalse(traceStepText.Contains("string SourcePackId", StringComparison.Ordinal));
+        Assert.IsFalse(traceStepText.Contains("string LocalizationKey", StringComparison.Ordinal));
+        Assert.IsFalse(traceStepText.Contains("IReadOnlyDictionary<string, string> LocalizationParameters", StringComparison.Ordinal));
+        Assert.IsFalse(evidenceText.Contains("IReadOnlyDictionary<string, string>? LabelParameters", StringComparison.Ordinal));
     }
 
     [TestMethod]
@@ -5121,41 +5173,41 @@ public class MigrationComplianceTests
         string apiProgramText = File.ReadAllText(apiProgramPath);
         string aiEndpointsPath = FindPath("Chummer.Api", "Endpoints", "AiEndpoints.cs");
         string aiEndpointsText = File.ReadAllText(aiEndpointsPath);
-        string aiGatewayContractsPath = FindPath("Chummer.Contracts", "AI", "AiGatewayContracts.cs");
+        string aiGatewayContractsPath = FindPath("Chummer.RunServices.Contracts", "AI", "AiGatewayContracts.cs");
         string aiGatewayContractsText = File.ReadAllText(aiGatewayContractsPath);
-        string aiConversationCatalogContractsPath = FindPath("Chummer.Contracts", "AI", "AiConversationCatalogContracts.cs");
+        string aiConversationCatalogContractsPath = FindPath("Chummer.RunServices.Contracts", "AI", "AiConversationCatalogContracts.cs");
         string aiConversationCatalogContractsText = File.ReadAllText(aiConversationCatalogContractsPath);
-        string aiMediaContractsPath = FindPath("Chummer.Contracts", "AI", "AiMediaContracts.cs");
+        string aiMediaContractsPath = FindPath("Chummer.RunServices.Contracts", "AI", "AiMediaContracts.cs");
         string aiMediaContractsText = File.ReadAllText(aiMediaContractsPath);
-        string aiMediaQueueContractsPath = FindPath("Chummer.Contracts", "AI", "AiMediaQueueContracts.cs");
+        string aiMediaQueueContractsPath = FindPath("Chummer.RunServices.Contracts", "AI", "AiMediaQueueContracts.cs");
         string aiMediaQueueContractsText = File.ReadAllText(aiMediaQueueContractsPath);
-        string aiBuildIdeaCatalogContractsPath = FindPath("Chummer.Contracts", "AI", "AiBuildIdeaCatalogContracts.cs");
+        string aiBuildIdeaCatalogContractsPath = FindPath("Chummer.RunServices.Contracts", "AI", "AiBuildIdeaCatalogContracts.cs");
         string aiBuildIdeaCatalogContractsText = File.ReadAllText(aiBuildIdeaCatalogContractsPath);
-        string buildIdeaCardContractsPath = FindPath("Chummer.Contracts", "AI", "BuildIdeaCardContracts.cs");
+        string buildIdeaCardContractsPath = FindPath("Chummer.RunServices.Contracts", "AI", "BuildIdeaCardContracts.cs");
         string buildIdeaCardContractsText = File.ReadAllText(buildIdeaCardContractsPath);
-        string aiExplainContractsPath = FindPath("Chummer.Contracts", "AI", "AiExplainContracts.cs");
+        string aiExplainContractsPath = FindPath("Chummer.RunServices.Contracts", "AI", "AiExplainContracts.cs");
         string aiExplainContractsText = File.ReadAllText(aiExplainContractsPath);
-        string aiPortraitPromptContractsPath = FindPath("Chummer.Contracts", "AI", "AiPortraitPromptContracts.cs");
+        string aiPortraitPromptContractsPath = FindPath("Chummer.RunServices.Contracts", "AI", "AiPortraitPromptContracts.cs");
         string aiPortraitPromptContractsText = File.ReadAllText(aiPortraitPromptContractsPath);
-        string aiHistoryDraftContractsPath = FindPath("Chummer.Contracts", "AI", "AiHistoryDraftContracts.cs");
+        string aiHistoryDraftContractsPath = FindPath("Chummer.RunServices.Contracts", "AI", "AiHistoryDraftContracts.cs");
         string aiHistoryDraftContractsText = File.ReadAllText(aiHistoryDraftContractsPath);
-        string aiDigestContractsPath = FindPath("Chummer.Contracts", "AI", "AiDigestContracts.cs");
+        string aiDigestContractsPath = FindPath("Chummer.RunServices.Contracts", "AI", "AiDigestContracts.cs");
         string aiDigestContractsText = File.ReadAllText(aiDigestContractsPath);
-        string aiActionPreviewContractsPath = FindPath("Chummer.Contracts", "AI", "AiActionPreviewContracts.cs");
+        string aiActionPreviewContractsPath = FindPath("Chummer.RunServices.Contracts", "AI", "AiActionPreviewContracts.cs");
         string aiActionPreviewContractsText = File.ReadAllText(aiActionPreviewContractsPath);
-        string aiHubProjectSearchContractsPath = FindPath("Chummer.Contracts", "AI", "AiHubProjectSearchContracts.cs");
+        string aiHubProjectSearchContractsPath = FindPath("Chummer.RunServices.Contracts", "AI", "AiHubProjectSearchContracts.cs");
         string aiHubProjectSearchContractsText = File.ReadAllText(aiHubProjectSearchContractsPath);
-        string aiMediaAssetContractsPath = FindPath("Chummer.Contracts", "AI", "AiMediaAssetContracts.cs");
+        string aiMediaAssetContractsPath = FindPath("Chummer.RunServices.Contracts", "AI", "AiMediaAssetContracts.cs");
         string aiMediaAssetContractsText = File.ReadAllText(aiMediaAssetContractsPath);
-        string aiEvaluationContractsPath = FindPath("Chummer.Contracts", "AI", "AiEvaluationContracts.cs");
+        string aiEvaluationContractsPath = FindPath("Chummer.RunServices.Contracts", "AI", "AiEvaluationContracts.cs");
         string aiEvaluationContractsText = File.ReadAllText(aiEvaluationContractsPath);
-        string aiApprovalContractsPath = FindPath("Chummer.Contracts", "AI", "AiApprovalContracts.cs");
+        string aiApprovalContractsPath = FindPath("Chummer.RunServices.Contracts", "AI", "AiApprovalContracts.cs");
         string aiApprovalContractsText = File.ReadAllText(aiApprovalContractsPath);
-        string aiTranscriptContractsPath = FindPath("Chummer.Contracts", "AI", "AiTranscriptContracts.cs");
+        string aiTranscriptContractsPath = FindPath("Chummer.RunServices.Contracts", "AI", "AiTranscriptContracts.cs");
         string aiTranscriptContractsText = File.ReadAllText(aiTranscriptContractsPath);
-        string aiRecapDraftContractsPath = FindPath("Chummer.Contracts", "AI", "AiRecapDraftContracts.cs");
+        string aiRecapDraftContractsPath = FindPath("Chummer.RunServices.Contracts", "AI", "AiRecapDraftContracts.cs");
         string aiRecapDraftContractsText = File.ReadAllText(aiRecapDraftContractsPath);
-        string aiPromptRegistryContractsPath = FindPath("Chummer.Contracts", "AI", "AiPromptRegistryContracts.cs");
+        string aiPromptRegistryContractsPath = FindPath("Chummer.RunServices.Contracts", "AI", "AiPromptRegistryContracts.cs");
         string aiPromptRegistryContractsText = File.ReadAllText(aiPromptRegistryContractsPath);
         string aiGatewayServiceContractPath = FindPath("Chummer.Application", "AI", "IAiGatewayService.cs");
         string aiGatewayServiceContractText = File.ReadAllText(aiGatewayServiceContractPath);

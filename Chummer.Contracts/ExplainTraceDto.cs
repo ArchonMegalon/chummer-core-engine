@@ -1,14 +1,13 @@
-using System.Collections.Generic;
+using Chummer.Contracts.Rulesets;
 
 namespace Chummer.Contracts;
 
 public record ExplainTraceDto(
     string TargetKey,
-    int FinalValue,
+    RulesetCapabilityValue? FinalValue,
     string SummaryKey,
-    IReadOnlyDictionary<string, string> SummaryParameters,
+    IReadOnlyList<RulesetExplainParameter> SummaryParameters,
     IReadOnlyList<TraceStepDto> Steps,
-    string? RuntimeFingerprint = null,
-    string? ProfileId = null,
+    ExplainProvenanceDto? Provenance = null,
     IReadOnlyList<ExplainEvidencePointerDto>? Evidence = null
 );

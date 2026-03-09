@@ -3,6 +3,7 @@ using Chummer.Application.BuildLab;
 using Chummer.Application.Content;
 using Chummer.Application.Journal;
 using Chummer.Application.Session;
+using Chummer.Contracts;
 using Chummer.Contracts.AI;
 using Chummer.Contracts.BuildLab;
 using Chummer.Contracts.Characters;
@@ -16,6 +17,8 @@ using Chummer.Rulesets.Hosting;
 using Chummer.Rulesets.Sr4;
 using Chummer.Rulesets.Sr5;
 using Chummer.Rulesets.Sr6;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 return CoreEngineTests.Run();
 
@@ -28,11 +31,14 @@ internal static class CoreEngineTests
             CapabilityDescriptorsEmitLocalizationKeys();
             ExperimentalRulesetsEmitDiagnosticMessageKeys();
             SessionReplayDiagnosticsStayKeyed();
+            SessionEventCompatibilityContractsRoundTripToCanonicalEnvelope();
             RuntimeInspectorProjectsCapabilityAndCompatibilityKeys();
             RuntimeInspectorProjectionIsDeterministicAcrossPackAndBindingOrder();
             RuntimeLockDiffIsDeterministicAndParameterized();
             AiExplainProjectionEmitsStructuredProvenance();
             AiExplainProjectionPrefersTraceContextOverMismatchedSessionContext();
+            ContractGoldenJsonFixturesStayStable();
+            RepoBoundaryGuardsHostedContractsAndSharedContractOwnership();
             LocalizationFallbackHelpersNormalizeLegacyContracts();
             JournalProjectionIsDeterministicAndValidated();
             BuildLabOutputsAreDeterministicAndLocalized();
@@ -149,6 +155,43 @@ internal static class CoreEngineTests
         AssertEx.True(
             projection.Diagnostics.Any(diagnostic => string.Equals(diagnostic.MessageKey, "session.replay.tracker.missing-id", StringComparison.Ordinal)),
             "Session replay should keep missing tracker identifiers keyed.");
+    }
+
+    private static void SessionEventCompatibilityContractsRoundTripToCanonicalEnvelope()
+    {
+        CharacterVersionReference baseCharacterVersion = new("char-1", "ver-1", RulesetDefaults.Sr5, "sha256:test");
+#pragma warning disable CS0618
+        SessionEvent legacyEvent = new(
+            EventId: "evt-legacy",
+            OverlayId: "overlay-1",
+            BaseCharacterVersion: baseCharacterVersion,
+            DeviceId: "device-1",
+            ActorId: "actor-1",
+            Sequence: 7,
+            EventType: SessionEventTypes.TrackerIncrement,
+            PayloadJson: "{\"trackerId\":\"stun\",\"amount\":2}",
+            CreatedAtUtc: DateTimeOffset.UnixEpoch.AddSeconds(7));
+
+        SessionEventEnvelope envelope = legacyEvent.ToEnvelope();
+        SessionEvent roundTrippedLegacy = SessionEvent.FromEnvelope(envelope);
+#pragma warning restore CS0618
+
+        AssertEx.Equal(
+            SessionEventEnvelopeSchemas.SessionEventsVnext,
+            envelope.Schema,
+            "Canonical session event envelopes should publish the vNext schema marker.");
+        AssertEx.Equal(
+            "stun",
+            envelope.Payload["trackerId"].StringValue,
+            "Compatibility payload parsing should preserve string fields.");
+        AssertEx.Equal(
+            2L,
+            envelope.Payload["amount"].IntegerValue.GetValueOrDefault(),
+            "Compatibility payload parsing should preserve numeric fields.");
+        AssertEx.Equal(
+            "{\"trackerId\":\"stun\",\"amount\":2}",
+            roundTrippedLegacy.PayloadJson,
+            "Compatibility wrappers should round-trip canonical envelopes back to the legacy JSON payload shape.");
     }
 
     private static void RuntimeInspectorProjectsCapabilityAndCompatibilityKeys()
@@ -499,6 +542,13 @@ internal static class CoreEngineTests
                 string.Equals(pointer.Kind, RulesetEvidencePointerKinds.RuleProfile, StringComparison.Ordinal)
                 && string.Equals(pointer.Pointer, "wrong-profile", StringComparison.Ordinal)),
             "Explain evidence should not leak session profile pointers from a mismatched runtime.");
+    }
+
+    private static void ContractGoldenJsonFixturesStayStable()
+    {
+        AssertGoldenJsonFixture("runtime-summary.golden.json", CreateRuntimeSummaryFixture());
+        AssertGoldenJsonFixture("explain-trace.golden.json", CreateExplainTraceFixture());
+        AssertGoldenJsonFixture("session-ledger.golden.json", CreateSessionLedgerFixture());
     }
 
     private static void LocalizationFallbackHelpersNormalizeLegacyContracts()
@@ -1607,6 +1657,266 @@ internal static class CoreEngineTests
                 change.ReasonParameters
                     .OrderBy(parameter => parameter.Name, StringComparer.Ordinal)
                     .Select(parameter => $"{parameter.Name}:{parameter.Value.Kind}:{parameter.Value.StringValue ?? parameter.Value.IntegerValue?.ToString() ?? parameter.Value.NumberValue?.ToString() ?? parameter.Value.DecimalValue?.ToString() ?? parameter.Value.BooleanValue?.ToString() ?? "null"}")));
+
+    private static AiRuntimeSummaryProjection CreateRuntimeSummaryFixture()
+    {
+        return new AiRuntimeSummaryProjection(
+            RuntimeFingerprint: "sha256:golden-runtime",
+            RulesetId: RulesetDefaults.Sr5,
+            Title: "Official SR5 Runtime",
+            CatalogKind: RuntimeLockCatalogKinds.Published,
+            EngineApiVersion: "engine-v2",
+            ContentBundles: ["core", "street-wyrd"],
+            RulePacks: ["combat-pack", "quality-pack"],
+            ProviderBindings: new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                [RulePackCapabilityIds.DeriveStat] = "combat-pack/derive.initiative",
+                [RulePackCapabilityIds.SessionQuickActions] = "combat-pack/session.quickaction"
+            },
+            Visibility: ArtifactVisibilityModes.Public,
+            Description: "Canonical runtime fixture");
+    }
+
+    private static ExplainTraceDto CreateExplainTraceFixture()
+    {
+        return new ExplainTraceDto(
+            TargetKey: "initiative.total",
+            FinalValue: RulesetCapabilityBridge.FromObject(14),
+            SummaryKey: "ruleset.explain.summary.derived-value",
+            SummaryParameters:
+            [
+                new RulesetExplainParameter("targetKey", RulesetCapabilityBridge.FromObject("initiative.total")),
+                new RulesetExplainParameter("finalValue", RulesetCapabilityBridge.FromObject(14))
+            ],
+            Steps:
+            [
+                new TraceStepDto(
+                    ProviderId: "combat-pack/derive.initiative",
+                    CapabilityId: RulePackCapabilityIds.DeriveStat,
+                    PackId: "combat-pack",
+                    ExplanationKey: "ruleset.trace.initiative.base",
+                    ExplanationParameters:
+                    [
+                        new RulesetExplainParameter("reaction", RulesetCapabilityBridge.FromObject(5)),
+                        new RulesetExplainParameter("intuition", RulesetCapabilityBridge.FromObject(4))
+                    ],
+                    Category: "derived-value",
+                    Modifier: 9m,
+                    Certain: true,
+                    RuleId: "sr5.combat.initiative",
+                    Evidence:
+                    [
+                        new ExplainEvidencePointerDto(
+                            Kind: RulesetEvidencePointerKinds.RuleReference,
+                            Pointer: "sr5.combat.initiative",
+                            LabelKey: "ruleset.explain.evidence.rule-reference",
+                            LabelParameters:
+                            [
+                                new RulesetExplainParameter("ruleId", RulesetCapabilityBridge.FromObject("sr5.combat.initiative"))
+                            ],
+                            ProviderId: "combat-pack/derive.initiative",
+                            PackId: "combat-pack",
+                            RuleId: "sr5.combat.initiative")
+                    ]),
+                new TraceStepDto(
+                    ProviderId: "combat-pack/derive.initiative",
+                    CapabilityId: RulePackCapabilityIds.DeriveStat,
+                    PackId: "combat-pack",
+                    ExplanationKey: "ruleset.diagnostic.soft-cap",
+                    ExplanationParameters:
+                    [
+                        new RulesetExplainParameter("capabilityId", RulesetCapabilityBridge.FromObject(RulePackCapabilityIds.DeriveStat))
+                    ],
+                    Category: "diagnostic",
+                    Modifier: null,
+                    Certain: null,
+                    RuleId: null)
+            ],
+            Provenance: new ExplainProvenanceDto(
+                RuntimeFingerprint: "sha256:golden-runtime",
+                RulesetId: RulesetDefaults.Sr5,
+                EngineApiVersion: "engine-v2",
+                CatalogKind: RuntimeLockCatalogKinds.Published,
+                RuntimeTitle: "Official SR5 Runtime",
+                ProfileId: "official.sr5.ops",
+                ProfileTitle: "Operations Profile",
+                ProviderId: "combat-pack/derive.initiative",
+                PackId: "combat-pack",
+                RulePacks: ["combat-pack", "quality-pack"],
+                ProviderBindings: new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    [RulePackCapabilityIds.DeriveStat] = "combat-pack/derive.initiative",
+                    [RulePackCapabilityIds.SessionQuickActions] = "combat-pack/session.quickaction"
+                }),
+            Evidence:
+            [
+                new ExplainEvidencePointerDto(
+                    Kind: RulesetEvidencePointerKinds.RuntimeLock,
+                    Pointer: "sha256:golden-runtime",
+                    LabelKey: "ruleset.explain.evidence.runtime-lock",
+                    LabelParameters:
+                    [
+                        new RulesetExplainParameter("runtimeFingerprint", RulesetCapabilityBridge.FromObject("sha256:golden-runtime"))
+                    ]),
+                new ExplainEvidencePointerDto(
+                    Kind: RulesetEvidencePointerKinds.RuleProfile,
+                    Pointer: "official.sr5.ops",
+                    LabelKey: "ruleset.explain.evidence.rule-profile",
+                    LabelParameters:
+                    [
+                        new RulesetExplainParameter("profileId", RulesetCapabilityBridge.FromObject("official.sr5.ops"))
+                    ])
+            ]);
+    }
+
+    private static SessionLedger CreateSessionLedgerFixture()
+    {
+        CharacterVersionReference baseCharacterVersion = new(
+            CharacterId: "char-1",
+            VersionId: "ver-1",
+            RulesetId: RulesetDefaults.Sr5,
+            RuntimeFingerprint: "sha256:golden-runtime");
+
+        return new SessionLedger(
+            OverlayId: "overlay-1",
+            BaseCharacterVersion: baseCharacterVersion,
+            Events:
+            [
+                new SessionEventEnvelope(
+                    EventId: "evt-1",
+                    OverlayId: "overlay-1",
+                    BaseCharacterVersion: baseCharacterVersion,
+                    DeviceId: "device-1",
+                    ActorId: "actor-1",
+                    Sequence: 1,
+                    EventType: SessionEventTypes.TrackerIncrement,
+                    Payload: new Dictionary<string, RulesetCapabilityValue>(StringComparer.Ordinal)
+                    {
+                        ["amount"] = RulesetCapabilityBridge.FromObject(2),
+                        ["trackerId"] = RulesetCapabilityBridge.FromObject("stun")
+                    },
+                    CreatedAtUtc: DateTimeOffset.Parse("2026-03-09T00:00:00+00:00"),
+                    AppliedAtUtc: DateTimeOffset.Parse("2026-03-09T00:00:03+00:00"),
+                    ParentEventId: null,
+                    SyncCursor: "cursor-1",
+                    ProviderId: "combat-pack/session.quickaction",
+                    PackId: "combat-pack",
+                    Schema: SessionEventEnvelopeSchemas.SessionEventsVnext)
+            ],
+            BaselineSnapshotId: "snapshot-1",
+            NextSequence: 2);
+    }
+
+    private static void AssertGoldenJsonFixture(string fixtureName, object value)
+    {
+        string fixturePath = Path.Combine(GetRepositoryRoot(), "Chummer.CoreEngine.Tests", "Fixtures", "Contracts", fixtureName);
+        string expected = File.ReadAllText(fixturePath).Replace("\r\n", "\n").TrimEnd();
+        string actual = JsonSerializer.Serialize(value, GoldenJsonOptions).Replace("\r\n", "\n").TrimEnd();
+        AssertEx.Equal(expected, actual, $"Golden JSON fixture '{fixtureName}' drifted.");
+    }
+
+    private static void RepoBoundaryGuardsHostedContractsAndSharedContractOwnership()
+    {
+        string repositoryRoot = GetRepositoryRoot();
+        string coreContractsRoot = Path.Combine(repositoryRoot, "Chummer.Contracts");
+        string runServicesContractsRoot = Path.Combine(repositoryRoot, "Chummer.RunServices.Contracts");
+        string[] hostedConcernDirectories =
+        [
+            Path.Combine(coreContractsRoot, "AI"),
+            Path.Combine(coreContractsRoot, "Hub")
+        ];
+
+        foreach (string hostedConcernDirectory in hostedConcernDirectories)
+        {
+            if (!Directory.Exists(hostedConcernDirectory))
+            {
+                continue;
+            }
+
+            string[] leakedSources = Directory.EnumerateFiles(hostedConcernDirectory, "*.cs", SearchOption.AllDirectories).ToArray();
+            AssertEx.True(
+                leakedSources.Length == 0,
+                $"Hosted-service contract sources leaked into engine-owned contracts: {string.Join(", ", leakedSources.Select(path => Path.GetRelativePath(repositoryRoot, path)))}.");
+        }
+
+        string[] hostedContractSources = Directory.EnumerateFiles(runServicesContractsRoot, "*.cs", SearchOption.AllDirectories)
+            .Where(path => path.Contains($"{Path.DirectorySeparatorChar}AI{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+                || path.Contains($"{Path.DirectorySeparatorChar}Hub{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            .ToArray();
+
+        foreach (string hostedContractSource in hostedContractSources)
+        {
+            string fileName = Path.GetFileName(hostedContractSource);
+            string[] duplicates = Directory.EnumerateFiles(repositoryRoot, fileName, SearchOption.AllDirectories)
+                .Where(path => !IsGeneratedOrBuildArtifact(path))
+                .Where(path => !string.Equals(path, hostedContractSource, StringComparison.Ordinal))
+                .ToArray();
+
+            AssertEx.True(
+                duplicates.Length == 0,
+                $"Hosted contract '{fileName}' was duplicated outside run-services ownership: {string.Join(", ", duplicates.Select(path => Path.GetRelativePath(repositoryRoot, path)))}.");
+        }
+
+        string runServicesContractsProjectPath = Path.Combine(runServicesContractsRoot, "Chummer.RunServices.Contracts.csproj");
+        string[] projectPaths = Directory.EnumerateFiles(repositoryRoot, "*.csproj", SearchOption.AllDirectories)
+            .Where(path => !IsGeneratedOrBuildArtifact(path))
+            .Where(path => !string.Equals(path, runServicesContractsProjectPath, StringComparison.Ordinal))
+            .ToArray();
+
+        foreach (string projectPath in projectPaths)
+        {
+            string projectText = File.ReadAllText(projectPath);
+            AssertEx.True(
+                !projectText.Contains(@"..\Chummer.RunServices.Contracts\AI\", StringComparison.Ordinal)
+                && !projectText.Contains(@"../Chummer.RunServices.Contracts/AI/", StringComparison.Ordinal)
+                && !projectText.Contains(@"..\Chummer.RunServices.Contracts\Hub\", StringComparison.Ordinal)
+                && !projectText.Contains(@"../Chummer.RunServices.Contracts/Hub/", StringComparison.Ordinal),
+                $"Project '{Path.GetRelativePath(repositoryRoot, projectPath)}' must consume hosted contracts via project/package ownership, not by compiling AI/Hub source files directly.");
+            AssertEx.True(
+                !projectText.Contains(@"..\Chummer.Contracts\AI\", StringComparison.Ordinal)
+                && !projectText.Contains(@"../Chummer.Contracts/AI/", StringComparison.Ordinal)
+                && !projectText.Contains(@"..\Chummer.Contracts\Hub\", StringComparison.Ordinal)
+                && !projectText.Contains(@"../Chummer.Contracts/Hub/", StringComparison.Ordinal),
+                $"Project '{Path.GetRelativePath(repositoryRoot, projectPath)}' reintroduced hosted AI/Hub contract source paths under engine ownership.");
+        }
+    }
+
+    private static bool IsGeneratedOrBuildArtifact(string path)
+    {
+        string normalizedPath = path.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+        return normalizedPath.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+            || normalizedPath.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+            || normalizedPath.Contains($"{Path.DirectorySeparatorChar}.git{Path.DirectorySeparatorChar}", StringComparison.Ordinal);
+    }
+
+    private static string GetRepositoryRoot()
+    {
+        string directory = AppContext.BaseDirectory;
+
+        while (!string.IsNullOrWhiteSpace(directory))
+        {
+            if (File.Exists(Path.Combine(directory, "instructions.md")))
+            {
+                return directory;
+            }
+
+            string? parent = Directory.GetParent(directory)?.FullName;
+            if (string.Equals(parent, directory, StringComparison.Ordinal))
+            {
+                break;
+            }
+
+            directory = parent ?? string.Empty;
+        }
+
+        throw new InvalidOperationException("Unable to locate repository root for fixture loading.");
+    }
+
+    private static JsonSerializerOptions GoldenJsonOptions { get; } = new(JsonSerializerDefaults.Web)
+    {
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        WriteIndented = true
+    };
 }
 
 internal static class AssertEx

@@ -1,15 +1,16 @@
-using System.Collections.Generic;
+using Chummer.Contracts.Rulesets;
 
 namespace Chummer.Contracts;
 
 public record TraceStepDto(
     string ProviderId,
-    string SourcePackId,
-    string LocalizationKey,
-    IReadOnlyDictionary<string, string> LocalizationParameters,
-    int ModifierApplied,
-    string? CapabilityId = null,
-    string? Category = null,
+    string CapabilityId,
+    string? PackId,
+    string ExplanationKey,
+    IReadOnlyList<RulesetExplainParameter> ExplanationParameters,
+    string Category,
+    decimal? Modifier = null,
+    bool? Certain = null,
     string? RuleId = null,
     IReadOnlyList<ExplainEvidencePointerDto>? Evidence = null
 );
