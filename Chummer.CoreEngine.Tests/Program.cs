@@ -1,9 +1,11 @@
 using Chummer.Application.AI;
 using Chummer.Application.BuildLab;
 using Chummer.Application.Content;
+using Chummer.Application.Explain;
 using Chummer.Application.Hub;
 using Chummer.Application.Journal;
 using Chummer.Application.Session;
+using Chummer.Application.Validation;
 using Chummer.Contracts;
 using Chummer.Contracts.AI;
 using Chummer.Contracts.BuildLab;
@@ -14,6 +16,7 @@ using Chummer.Contracts.Journal;
 using Chummer.Contracts.Owners;
 using Chummer.Contracts.Rulesets;
 using Chummer.Contracts.Session;
+using Chummer.Contracts.Validation;
 using Chummer.Rulesets.Hosting;
 using Chummer.Rulesets.Sr4;
 using Chummer.Rulesets.Sr5;
@@ -47,6 +50,7 @@ internal static class CoreEngineTests
             LocalizationFallbackHelpersNormalizeLegacyContracts();
             SessionAndRuntimeCompatibilityProjectionsStayDeterministic();
             JournalProjectionIsDeterministicAndValidated();
+            ValidationSummaryAndExplainHookCompositionStayDeterministic();
             BuildLabOutputsAreDeterministicAndLocalized();
             ContentInstallPreviewsEmitLocalizationKeys();
             Console.WriteLine("core-engine-tests: ok");
@@ -1178,6 +1182,111 @@ internal static class CoreEngineTests
             "Build Lab package suggestions should expose localization-ready labels, summaries, and explain hooks.");
 
         AssertEx.NotNull(scoredVariant, "Build Lab should resolve exact variant ids when scoring a generated variant.");
+    }
+
+    private static void ValidationSummaryAndExplainHookCompositionStayDeterministic()
+    {
+        DefaultExplainHookComposer explainHookComposer = new();
+        DefaultValidationSummaryService validationSummaryService = new();
+
+        ExplainHookReference ledgerExplain = explainHookComposer.CreateReference(
+            targetKind: "ledger-entry",
+            targetId: "ledger-2",
+            traceId: "trace-ledger-2",
+            subjectId: "ledger-2",
+            capabilityId: "validate.choice",
+            providerId: "provider.alpha",
+            packId: "pack.alpha",
+            runtimeFingerprint: "sha256:runtime-1");
+        ExplainHookReference timelineExplain = explainHookComposer.CreateReference(
+            targetKind: "timeline-event",
+            targetId: "timeline-2",
+            traceId: "trace-timeline-2",
+            subjectId: "timeline-2",
+            capabilityId: "validate.choice",
+            providerId: "provider.alpha",
+            packId: "pack.alpha",
+            runtimeFingerprint: "sha256:runtime-1");
+        ExplainHookComposition composition = explainHookComposer.Compose(
+            compositionId: "validation-run",
+            attachments:
+            [
+                new ExplainHookAttachment("timeline-event", "timeline-2", timelineExplain),
+                new ExplainHookAttachment("ledger-entry", "ledger-2", ledgerExplain),
+                new ExplainHookAttachment("timeline-event", "timeline-2", timelineExplain)
+            ]);
+
+        ValidationSummary summary = validationSummaryService.BuildSummary(
+            scopeKind: "Session",
+            scopeId: "session-7",
+            diagnostics:
+            [
+                new RulesetCapabilityDiagnostic(
+                    Code: "journal.timeline.ledger-missing",
+                    Message: "journal.timeline.ledger-missing",
+                    Severity: RulesetCapabilityDiagnosticSeverities.Warning,
+                    MessageKey: "journal.timeline.ledger-missing",
+                    MessageParameters:
+                    [
+                        new RulesetExplainParameter("subjectId", RulesetCapabilityBridge.FromObject("timeline-2")),
+                        new RulesetExplainParameter("providerId", RulesetCapabilityBridge.FromObject("provider.alpha")),
+                        new RulesetExplainParameter("packId", RulesetCapabilityBridge.FromObject("pack.alpha"))
+                    ]),
+                new RulesetCapabilityDiagnostic(
+                    Code: "journal.timeline.invalid-range",
+                    Message: "journal.timeline.invalid-range",
+                    Severity: RulesetCapabilityDiagnosticSeverities.Error,
+                    MessageKey: "journal.timeline.invalid-range",
+                    MessageParameters:
+                    [
+                        new RulesetExplainParameter("subjectId", RulesetCapabilityBridge.FromObject("timeline-2")),
+                        new RulesetExplainParameter("capabilityId", RulesetCapabilityBridge.FromObject("validate.choice"))
+                    ]),
+                new RulesetCapabilityDiagnostic(
+                    Code: "journal.ledger.note-missing",
+                    Message: "journal.ledger.note-missing",
+                    Severity: RulesetCapabilityDiagnosticSeverities.Warning,
+                    MessageKey: "journal.ledger.note-missing",
+                    MessageParameters:
+                    [
+                        new RulesetExplainParameter("subjectId", RulesetCapabilityBridge.FromObject("ledger-2")),
+                        new RulesetExplainParameter("providerId", RulesetCapabilityBridge.FromObject("provider.alpha")),
+                        new RulesetExplainParameter("packId", RulesetCapabilityBridge.FromObject("pack.alpha"))
+                    ])
+            ],
+            runtimeFingerprint: "sha256:runtime-1",
+            explainHooksByCode: new Dictionary<string, ExplainHookReference>(StringComparer.Ordinal)
+            {
+                ["journal.ledger.note-missing"] = ledgerExplain,
+                ["journal.timeline.ledger-missing"] = timelineExplain
+            });
+
+        AssertEx.SequenceEqual(
+            composition.Attachments.Select(static entry => $"{entry.TargetKind}:{entry.TargetId}:{entry.Explain.HookId}"),
+            [
+                "ledger-entry:ledger-2:ledger-entry:ledger-2:trace-ledger-2",
+                "timeline-event:timeline-2:timeline-event:timeline-2:trace-timeline-2"
+            ],
+            "Explain-hook composition should deduplicate and sort deterministic attachment keys.");
+        AssertEx.Equal(
+            ValidationSummaryStates.Invalid,
+            summary.State,
+            "Validation summaries should become invalid when at least one error diagnostic exists.");
+        AssertEx.Equal(
+            "validation.summary.invalid",
+            ValidationSummaryLocalization.ResolveSummaryKey(summary),
+            "Validation summaries should expose localization-safe summary keys.");
+        AssertEx.SequenceEqual(
+            summary.Failures.Select(static failure => failure.Code),
+            ["journal.timeline.invalid-range", "journal.ledger.note-missing", "journal.timeline.ledger-missing"],
+            "Validation summary failures should sort deterministically by severity then code.");
+        AssertEx.True(
+            summary.Failures.All(static failure => string.Equals(failure.RuntimeFingerprint, "sha256:runtime-1", StringComparison.Ordinal)),
+            "Validation summary failures should carry normalized runtime fingerprint context.");
+        AssertEx.True(
+            string.Equals(summary.Failures[1].Explain?.HookId, "ledger-entry:ledger-2:trace-ledger-2", StringComparison.Ordinal)
+            && string.Equals(summary.Failures[2].Explain?.HookId, "timeline-event:timeline-2:trace-timeline-2", StringComparison.Ordinal),
+            "Validation summaries should attach explain-hook references for downstream integration surfaces.");
     }
 
     private static void ContentInstallPreviewsEmitLocalizationKeys()

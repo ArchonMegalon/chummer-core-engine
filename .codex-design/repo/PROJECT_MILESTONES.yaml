@@ -136,7 +136,7 @@ milestones:
       - Completion requires byte-stable runtime lock and fingerprint outputs for equivalent dependency graphs and manifest sets.
   - id: A9
     title: Journal, validation, and explain-hook integration primitives
-    status: open
+    status: done
     mapped_worklist:
       - WL-071
       - WL-082
@@ -146,12 +146,24 @@ milestones:
       - id: A9.1
         worklist: WL-082
         title: Add journal and ledger timeline projection primitives
+        status: done
+        evidence:
+          - `Chummer.Contracts/Journal/JournalContracts.cs` defines engine-owned deterministic note, ledger, and timeline projection DTO families.
+          - `Chummer.Application/Journal/DefaultJournalProjectionService.cs` provides stable scope filtering, ordering, and keyed diagnostic validation for journal projections.
       - id: A9.2
         worklist: WL-083
         title: Add validation summary and failure-envelope primitives
+        status: done
+        evidence:
+          - Added `Chummer.Contracts/Validation/ValidationSummaryContracts.cs` with localization-safe `ValidationSummary` and `ValidationFailureEnvelope` DTOs.
+          - Added `Chummer.Application/Validation/DefaultValidationSummaryService.cs` to emit deterministic severity-ranked failure envelopes with runtime fingerprint and provenance context.
       - id: A9.3
         worklist: WL-084
         title: Add explain-hook composition seam for backend integrations
+        status: done
+        evidence:
+          - Added `Chummer.Contracts/ExplainHookContracts.cs` with engine-owned explain hook reference and composition contracts for downstream attachment seams.
+          - Added `Chummer.Application/Explain/DefaultExplainHookComposer.cs` to create normalized explain hooks and deterministic deduplicated attachment compositions.
     notes:
-      - Core still needs deterministic backend-facing seams for journal or timeline projections, validation summaries, and explain-hook attachment.
-      - Completion requires structured engine outputs that downstream repos can project directly without re-deriving mechanics or embedding hosted workflow logic.
+      - A9.1 through A9.3 are complete with deterministic journal/timeline projection, validation summary/failure-envelope contracts, and explain-hook composition seams.
+      - Regression coverage `ValidationSummaryAndExplainHookCompositionStayDeterministic` in `Chummer.CoreEngine.Tests/Program.cs` locks deterministic ordering, localization-safe keys, runtime context propagation, and explain-hook attachment behavior.
