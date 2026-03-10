@@ -1999,6 +1999,13 @@ internal static class CoreEngineTests
             !queueText.Contains("Remaining hardening and integration work is still tracked as coarse queue slices rather than milestone-mapped task coverage", StringComparison.Ordinal),
             "Published queue overlay should not regress back to the coarse hardening/integration queue slice.");
         AssertEx.True(
+            queueText.Contains("Milestone `A0.5`", StringComparison.Ordinal)
+            && queueText.Contains("`WL-072`", StringComparison.Ordinal)
+            && queueText.Contains("Chummer.Presentation.Contracts", StringComparison.Ordinal)
+            && queueText.Contains("Chummer.RunServices.Contracts", StringComparison.Ordinal)
+            && !queueText.Contains("Temporary source-project leaks such as `Chummer.Presentation.Contracts` and `Chummer.RunServices.Contracts` still need deletion after the contract plane cutover.", StringComparison.Ordinal),
+            "Published queue overlay should map temporary contract source-project deletion to the executable A0.5/WL-072 follow-through item.");
+        AssertEx.True(
             projectMilestonesText.Contains("milestone_coverage_complete: true", StringComparison.Ordinal)
             && projectMilestonesText.Contains("A0.5", StringComparison.Ordinal)
             && projectMilestonesText.Contains("WL-072", StringComparison.Ordinal)

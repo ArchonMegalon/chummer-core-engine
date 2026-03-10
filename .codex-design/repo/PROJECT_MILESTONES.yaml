@@ -40,7 +40,8 @@ milestones:
     mapped_worklist:
       - WL-072
     notes:
-      - Temporary presentation and run-services source projects still need deletion after package-only consumers are cut over.
+      - `WL-072` is the executable follow-through item for deleting the temporary `Chummer.Presentation.Contracts` and `Chummer.RunServices.Contracts` source projects.
+      - Deletion is gated on package-only consumer cutover across presentation and run-services so core can stop carrying direct source-project references safely.
   - id: A6
     title: Contract hardening
     status: open
