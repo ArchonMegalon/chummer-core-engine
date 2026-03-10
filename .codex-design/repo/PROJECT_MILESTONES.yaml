@@ -43,6 +43,10 @@ milestones:
       - WL-086
       - WL-087
       - WL-088
+      - WL-089
+      - WL-090
+      - WL-091
+      - WL-092
     work_items:
       - id: A0.5.1
         worklist: WL-086
@@ -65,12 +69,41 @@ milestones:
         evidence:
           - Auditor publication candidate `50581` reports hosted AI/media/approval/search contract families still leak into core ownership.
           - A0.5 closure requires package-only consumer cutover onto `Chummer.Run.Contracts` so engine-owned contract source no longer carries hosted DTO families.
+      - id: A0.5.4
+        worklist: WL-089
+        title: Keep presentation-contract authority closure runnable through package-only cutover acceptance
+        status: queued
+        evidence:
+          - `WL-086` follow-through is decomposed into surface-specific runnable slices so presentation-owned browse/workbench/journal/shell contract families stay milestone-mapped until safe closure.
+          - A0.5 cannot close while presentation-owned contract families can still drift back into core-owned source without explicit closure checks.
+      - id: A0.5.5
+        worklist: WL-090
+        title: Keep run-service contract authority closure runnable through hosted package cutover acceptance
+        status: queued
+        evidence:
+          - `WL-086` follow-through is decomposed into surface-specific runnable slices so hosted run-service contract families remain explicitly tracked through package-only cutover.
+          - A0.5 requires runnable migration and reference checks to keep hosted AI/Hub contract ownership package-mapped instead of source-leaked.
+      - id: A0.5.6
+        worklist: WL-091
+        title: Keep browser infrastructure authority closure runnable through presentation ownership anchoring
+        status: queued
+        evidence:
+          - `WL-086` follow-through is decomposed into surface-specific runnable slices so browser-only storage/runtime adapters stay quarantined from core ownership.
+          - A0.5 closure requires explicit verification that browser infrastructure remains outside active core verification paths.
+      - id: A0.5.7
+        worklist: WL-092
+        title: Keep legacy helper tooling authority closure runnable through safe lifecycle closure
+        status: queued
+        evidence:
+          - `WL-086` follow-through is decomposed into surface-specific runnable slices so non-engine helper tools remain milestone-mapped until safe closure acceptance.
+          - A0.5 closure requires explicit confirmation that legacy helper tooling lifecycle stays outside engine-owned authority boundaries.
     notes:
       - `WL-072` remains open and executable so package-only consumer cutover acceptance can gate safe deletion closure for temporary source projects.
-      - A0.5 stays open while deletion follow-through (`WL-072` / `WL-087`) and remaining follow-through work (`WL-086` / `WL-088`) remain active.
+      - A0.5 stays open while deletion follow-through (`WL-072` / `WL-087`) and remaining follow-through work (`WL-086`, `WL-088`, `WL-089`, `WL-090`, `WL-091`, `WL-092`) remain active.
       - Queue refresh maintenance on 2026-03-10 (`WL-085`) keeps A0.5 represented as explicit core milestone coverage so contract-reset follow-through stays visible until cutover closure.
       - Queue refresh on 2026-03-10 appended runnable follow-through slices `WL-086` and `WL-087` from auditor candidate IDs `44367` and `44368` so uncovered non-engine scope and temporary leak deletion stay milestone-mapped instead of queue-overlay-only.
       - Auditor publication candidate `50581` on 2026-03-10 adds hosted-contract leakage follow-through (`WL-088`) so AI/media/approval/search DTO ownership migration to `Chummer.Run.Contracts` remains executable until safe closure.
+      - `WL-086` follow-through decomposition on 2026-03-10 appends explicit surface slices (`WL-089` through `WL-092`) so presentation contracts, run-service contracts, browser infrastructure, and legacy helper tooling each stay runnable and milestone-mapped until safe closure.
   - id: A6
     title: Contract hardening
     status: done
