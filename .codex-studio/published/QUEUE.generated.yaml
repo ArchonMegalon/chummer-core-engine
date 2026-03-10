@@ -14,3 +14,4 @@ items:
 - 'Auditor candidate `44367` follow-through: append runnable backlog slices under `A0.5` (`WL-086`) so non-engine authority surfaces (presentation contracts, run-service contracts, browser infrastructure, and legacy helper tools) remain milestone-mapped until safe closure.'
 - 'Auditor candidate `44368` follow-through: append runnable deletion closure slice under `A0.5` (`WL-087`) so temporary source-project leaks (`Chummer.Presentation.Contracts`, `Chummer.RunServices.Contracts`) stay executable until package-only cutover acceptance.'
 - Relocate AI/media/approval/search hosted contract families into `Chummer.Run.Contracts` and leave only engine-owned DTOs in core.
+- Sync the approved Chummer design bundle into `core` under `.codex-design/` and refresh repo-local review context.
