@@ -88,6 +88,7 @@ milestones:
         evidence:
           - A6.1 locked canonical ownership line for runtime install DTOs in `Chummer.Contracts/Content/RuntimeLockInstallContracts.cs` and `Chummer.Contracts/Content/RuntimeLockRegistryContracts.cs`.
           - A6.1 locked canonical ownership line for BuildKit DTO families in `Chummer.Contracts/Content/ArtifactContracts.cs`, `Chummer.Contracts/Content/BuildKitApplicationContracts.cs`, and `Chummer.Contracts/Content/BuildKitRegistryContracts.cs`.
+          - A6.1 locked canonical ownership line for compatibility DTO families by keeping hub compatibility/install-preview projections in `Chummer.Contracts/Hub` (`HubProjectCompatibilityContracts.cs`, `HubProjectInstallPreviewContracts.cs`) while asserting those projection DTOs do not leak into engine-owned content contracts.
           - Boundary regression guard `RepoBoundaryGuardsHostedContractsAndSharedContractOwnership` now asserts canonical contract ownership under `Chummer.Contracts` and verifies the deleted temporary project roots are absent.
       - id: A6.2
         worklist: WL-074
