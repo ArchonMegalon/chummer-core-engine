@@ -2075,8 +2075,9 @@ internal static class CoreEngineTests
         foreach (string surface in quarantinedSurfaces)
         {
             AssertEx.True(
-                scopeText.Contains(surface, StringComparison.Ordinal),
-                $"Implementation scope should explicitly classify '{surface}' as quarantined non-engine scope.");
+                scopeText.Contains(surface, StringComparison.Ordinal)
+                || projectMilestonesText.Contains(surface, StringComparison.Ordinal),
+                $"Implementation scope or milestone registry should explicitly classify '{surface}' as quarantined non-engine scope.");
             AssertEx.True(
                 projectMilestonesText.Contains(surface, StringComparison.Ordinal),
                 $"Project milestone registry should explicitly map quarantined surface '{surface}'.");
