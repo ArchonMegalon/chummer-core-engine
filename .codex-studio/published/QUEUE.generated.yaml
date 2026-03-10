@@ -27,3 +27,9 @@ items:
 - Publish or append runnable backlog for Temporary source-project leaks such as `Chummer.Presentation.Contracts`
   and `Chummer.RunServices.Contracts` still need deletion after the contract plane
   cutover..
+- Keep hardening/integration execution mapped to explicit milestones by maintaining runnable A6-A9
+  worklist slices in `WORKLIST.md` and `.codex-design/repo/PROJECT_MILESTONES.yaml`
+  whenever queue overlays are refreshed.
+- Keep cross-repo contract reset follow-through mapped as explicit core milestone
+  `A0.5` and executable worklist `WL-072` until package-only consumer cutover allows
+  deleting temporary source projects safely.

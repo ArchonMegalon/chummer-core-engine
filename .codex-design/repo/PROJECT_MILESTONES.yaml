@@ -44,7 +44,7 @@ milestones:
       - Deletion is gated on package-only consumer cutover across presentation and run-services so core can stop carrying direct source-project references safely.
   - id: A6
     title: Contract hardening
-    status: open
+    status: done
     mapped_worklist:
       - WL-068
       - WL-073
@@ -62,13 +62,21 @@ milestones:
       - id: A6.2
         worklist: WL-074
         title: Add normalization fixtures for runtime install, BuildKit, and runtime compatibility DTOs
+        status: done
+        evidence:
+          - Added `RuntimeCompatibilityContractNormalizer` to canonicalize runtime-lock install preview/candidate payloads and BuildKit manifests under engine-owned contract families.
+          - Added normalization fixture coverage and golden fixtures in `Chummer.CoreEngine.Tests/Fixtures/Contracts` for runtime-lock install preview, BuildKit manifest, and runtime-lock install candidate payloads.
       - id: A6.3
         worklist: WL-075
         title: Harden session and runtime compatibility projection seams
+        status: done
+        evidence:
+          - Added deterministic compatibility projection regression coverage for runtime-lock and BuildKit hub compatibility matrices under ordering variance.
+          - Hardened session overlay replay ordering in `DefaultSessionOverlayProjectionService` to deterministic sequence/timestamp/event-id ordering for stable session compatibility projection outputs.
     notes:
       - A6.1 is complete: runtime install, BuildKit, and compatibility DTO ownership is now explicitly locked to canonical contract families, with boundary regression assertions.
-      - Runtime install, BuildKit, and session compatibility contracts still need normalization coverage inside engine-owned DTO families.
-      - Completion requires deterministic compatibility projection coverage so presentation and run-services can consume canonical engine answers without duplicating reducer logic.
+      - A6.2 and A6.3 are complete with canonical normalization fixtures and deterministic compatibility projection regression coverage.
+      - Presentation and run-services now have fixture-backed canonical compatibility payloads for runtime install, BuildKit manifests, runtime compatibility diagnostics, and session envelope replay ordering behavior.
       - Auditor queue-exhaustion findings from 2026-03-10 candidate IDs 3 and 4 are incorporated by milestone-mapped A0.5 and A6-A9 coverage plus explicit A6.1 evidence.
   - id: A7
     title: Structured Explain API hardening

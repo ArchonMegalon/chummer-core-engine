@@ -1,6 +1,7 @@
 using Chummer.Application.AI;
 using Chummer.Application.BuildLab;
 using Chummer.Application.Content;
+using Chummer.Application.Hub;
 using Chummer.Application.Journal;
 using Chummer.Application.Session;
 using Chummer.Contracts;
@@ -38,10 +39,12 @@ internal static class CoreEngineTests
             AiExplainProjectionEmitsStructuredProvenance();
             AiExplainProjectionPrefersTraceContextOverMismatchedSessionContext();
             ContractGoldenJsonFixturesStayStable();
+            ContractNormalizationFixturesStayStable();
             RepoBoundaryGuardsHostedContractsAndSharedContractOwnership();
             ActiveCoreEngineSolutionStaysPurified();
             HardeningBacklogStaysMilestoneMapped();
             LocalizationFallbackHelpersNormalizeLegacyContracts();
+            SessionAndRuntimeCompatibilityProjectionsStayDeterministic();
             JournalProjectionIsDeterministicAndValidated();
             BuildLabOutputsAreDeterministicAndLocalized();
             ContentInstallPreviewsEmitLocalizationKeys();
@@ -551,6 +554,170 @@ internal static class CoreEngineTests
         AssertGoldenJsonFixture("runtime-summary.golden.json", CreateRuntimeSummaryFixture());
         AssertGoldenJsonFixture("explain-trace.golden.json", CreateExplainTraceFixture());
         AssertGoldenJsonFixture("session-ledger.golden.json", CreateSessionLedgerFixture());
+    }
+
+    private static void ContractNormalizationFixturesStayStable()
+    {
+        RuntimeLockInstallPreviewReceipt normalizedInstallPreviewA =
+            RuntimeCompatibilityContractNormalizer.NormalizeRuntimeLockInstallPreview(CreateRuntimeLockInstallPreviewFixtureA());
+        RuntimeLockInstallPreviewReceipt normalizedInstallPreviewB =
+            RuntimeCompatibilityContractNormalizer.NormalizeRuntimeLockInstallPreview(CreateRuntimeLockInstallPreviewFixtureB());
+        BuildKitManifest normalizedBuildKitManifestA =
+            RuntimeCompatibilityContractNormalizer.NormalizeBuildKitManifest(CreateBuildKitManifestFixtureA());
+        BuildKitManifest normalizedBuildKitManifestB =
+            RuntimeCompatibilityContractNormalizer.NormalizeBuildKitManifest(CreateBuildKitManifestFixtureB());
+        RuntimeLockInstallCandidate normalizedInstallCandidateA =
+            RuntimeCompatibilityContractNormalizer.NormalizeRuntimeLockInstallCandidate(CreateRuntimeLockInstallCandidateFixtureA());
+        RuntimeLockInstallCandidate normalizedInstallCandidateB =
+            RuntimeCompatibilityContractNormalizer.NormalizeRuntimeLockInstallCandidate(CreateRuntimeLockInstallCandidateFixtureB());
+
+        AssertEx.Equal(
+            JsonSerializer.Serialize(normalizedInstallPreviewA, GoldenJsonOptions),
+            JsonSerializer.Serialize(normalizedInstallPreviewB, GoldenJsonOptions),
+            "Runtime-lock install previews should normalize order-insensitive inputs into a deterministic payload shape.");
+        AssertEx.Equal(
+            JsonSerializer.Serialize(normalizedBuildKitManifestA, GoldenJsonOptions),
+            JsonSerializer.Serialize(normalizedBuildKitManifestB, GoldenJsonOptions),
+            "BuildKit manifests should normalize order-insensitive inputs into a deterministic payload shape.");
+        AssertEx.Equal(
+            JsonSerializer.Serialize(normalizedInstallCandidateA, GoldenJsonOptions),
+            JsonSerializer.Serialize(normalizedInstallCandidateB, GoldenJsonOptions),
+            "Runtime compatibility candidates should normalize diagnostics into a deterministic payload shape.");
+
+        AssertGoldenJsonFixture("runtime-lock-install-preview.normalized.golden.json", normalizedInstallPreviewA);
+        AssertGoldenJsonFixture("buildkit-manifest.normalized.golden.json", normalizedBuildKitManifestA);
+        AssertGoldenJsonFixture("runtime-lock-install-candidate.normalized.golden.json", normalizedInstallCandidateA);
+    }
+
+    private static void SessionAndRuntimeCompatibilityProjectionsStayDeterministic()
+    {
+        CharacterVersionReference baseCharacterVersion = new("char-1", "ver-1", RulesetDefaults.Sr5, "sha256:test");
+        SessionEventEnvelope olderEvent = new(
+            EventId: "evt-older",
+            OverlayId: "overlay-1",
+            BaseCharacterVersion: baseCharacterVersion,
+            DeviceId: "device-1",
+            ActorId: "actor-1",
+            Sequence: 7,
+            EventType: SessionOverlayEventKinds.PinChanged,
+            Payload: new Dictionary<string, RulesetCapabilityValue>(StringComparer.Ordinal)
+            {
+                ["actionId"] = RulesetCapabilityBridge.FromObject("quick-heal"),
+                ["isPinned"] = RulesetCapabilityBridge.FromObject(false)
+            },
+            CreatedAtUtc: DateTimeOffset.UnixEpoch.AddSeconds(1));
+        SessionEventEnvelope newerEvent = new(
+            EventId: "evt-newer",
+            OverlayId: "overlay-1",
+            BaseCharacterVersion: baseCharacterVersion,
+            DeviceId: "device-1",
+            ActorId: "actor-1",
+            Sequence: 7,
+            EventType: SessionOverlayEventKinds.PinChanged,
+            Payload: new Dictionary<string, RulesetCapabilityValue>(StringComparer.Ordinal)
+            {
+                ["actionId"] = RulesetCapabilityBridge.FromObject("quick-heal"),
+                ["isPinned"] = RulesetCapabilityBridge.FromObject(true)
+            },
+            CreatedAtUtc: DateTimeOffset.UnixEpoch.AddSeconds(2));
+
+        DefaultSessionOverlayProjectionService sessionService = new();
+        SessionOverlayProjection projectionA = sessionService.Replay(
+            overlayId: "overlay-1",
+            characterId: "char-1",
+            runtimeFingerprint: "sha256:test",
+            events: [newerEvent, olderEvent]);
+        SessionOverlayProjection projectionB = sessionService.Replay(
+            overlayId: "overlay-1",
+            characterId: "char-1",
+            runtimeFingerprint: "sha256:test",
+            events: [olderEvent, newerEvent]);
+
+        AssertEx.SequenceEqual(
+            projectionA.AppliedEvents.Select(static candidate => candidate.EventId),
+            projectionB.AppliedEvents.Select(static candidate => candidate.EventId),
+            "Session replay should deterministically order same-sequence envelopes by timestamp and event id.");
+        AssertEx.SequenceEqual(
+            projectionA.PinnedActionIds,
+            projectionB.PinnedActionIds,
+            "Session replay should project stable compatibility state regardless of caller event ordering.");
+        AssertEx.SequenceEqual(
+            projectionA.PinnedActionIds,
+            ["quick-heal"],
+            "Session replay should resolve same-sequence pin changes consistently.");
+
+        DefaultHubProjectCompatibilityService compatibilityService = new(
+            new RulesetPluginRegistry([new Sr5RulesetPlugin()]),
+            new RulePackRegistryServiceStub(
+            [
+                CreateRulePackEntry(
+                    packId: "house-rules",
+                    capabilities:
+                    [
+                        new RulePackCapabilityDescriptor(RulePackCapabilityIds.DeriveStat, RulePackAssetKinds.Lua, RulePackAssetModes.AddProvider)
+                    ]),
+                CreateRulePackEntry(
+                    packId: "combat-pack",
+                    capabilities:
+                    [
+                        new RulePackCapabilityDescriptor(RulePackCapabilityIds.SessionQuickActions, RulePackAssetKinds.Lua, RulePackAssetModes.AddProvider, SessionSafe: true)
+                    ])
+            ]),
+            new RuleProfileRegistryServiceStub([CreateProfile()]),
+            new BuildKitRegistryServiceStub(
+            [
+                CreateBuildKitRegistryEntry("buildkit-a", CreateBuildKitManifestFixtureA()),
+                CreateBuildKitRegistryEntry("buildkit-b", CreateBuildKitManifestFixtureB())
+            ]),
+            new RuntimeLockRegistryServiceStub(
+            [
+                CreateRuntimeLockRegistryEntry(
+                    lockId: "runtime-a",
+                    runtimeLock: CreateCompatibilityRuntimeLockFixtureA()),
+                CreateRuntimeLockRegistryEntry(
+                    lockId: "runtime-b",
+                    runtimeLock: CreateCompatibilityRuntimeLockFixtureB() with { RulesetId = RulesetDefaults.Sr5 })
+            ]));
+
+        HubProjectCompatibilityMatrix? runtimeMatrixA = compatibilityService.GetMatrix(
+            OwnerScope.LocalSingleUser,
+            HubCatalogItemKinds.RuntimeLock,
+            "runtime-a",
+            RulesetDefaults.Sr5);
+        HubProjectCompatibilityMatrix? runtimeMatrixB = compatibilityService.GetMatrix(
+            OwnerScope.LocalSingleUser,
+            HubCatalogItemKinds.RuntimeLock,
+            "runtime-b",
+            RulesetDefaults.Sr5);
+        AssertEx.NotNull(runtimeMatrixA, "Runtime compatibility matrix should resolve for runtime-a.");
+        AssertEx.NotNull(runtimeMatrixB, "Runtime compatibility matrix should resolve for runtime-b.");
+
+        AssertEx.SequenceEqual(
+            runtimeMatrixA!.Rows.Select(FormatCompatibilityRow),
+            runtimeMatrixB!.Rows.Select(FormatCompatibilityRow),
+            "Runtime compatibility projections should remain deterministic across runtime lock ordering variance.");
+        AssertEx.SequenceEqual(
+            runtimeMatrixA.Capabilities?.Select(FormatCapabilityProjection) ?? [],
+            runtimeMatrixB.Capabilities?.Select(FormatCapabilityProjection) ?? [],
+            "Runtime compatibility capability projections should remain deterministic across runtime lock ordering variance.");
+
+        HubProjectCompatibilityMatrix? buildKitMatrixA = compatibilityService.GetMatrix(
+            OwnerScope.LocalSingleUser,
+            HubCatalogItemKinds.BuildKit,
+            "buildkit-a",
+            RulesetDefaults.Sr5);
+        HubProjectCompatibilityMatrix? buildKitMatrixB = compatibilityService.GetMatrix(
+            OwnerScope.LocalSingleUser,
+            HubCatalogItemKinds.BuildKit,
+            "buildkit-b",
+            RulesetDefaults.Sr5);
+        AssertEx.NotNull(buildKitMatrixA, "BuildKit compatibility matrix should resolve for buildkit-a.");
+        AssertEx.NotNull(buildKitMatrixB, "BuildKit compatibility matrix should resolve for buildkit-b.");
+
+        AssertEx.SequenceEqual(
+            buildKitMatrixA!.Rows.Select(FormatCompatibilityRow),
+            buildKitMatrixB!.Rows.Select(FormatCompatibilityRow),
+            "BuildKit compatibility projections should remain deterministic across runtime-requirement ordering variance.");
     }
 
     private static void LocalizationFallbackHelpersNormalizeLegacyContracts()
@@ -1226,6 +1393,401 @@ internal static class CoreEngineTests
             new ArtifactInstallState(ArtifactInstallStates.Available));
     }
 
+    private static RuntimeLockInstallPreviewReceipt CreateRuntimeLockInstallPreviewFixtureA()
+    {
+        return new RuntimeLockInstallPreviewReceipt(
+            LockId: "runtime-lock-a",
+            Target: new RuleProfileApplyTarget(RuleProfileApplyTargetKinds.SessionLedger, "session-a"),
+            RuntimeLock: CreateCompatibilityRuntimeLockFixtureA(),
+            Changes:
+            [
+                new RuntimeLockInstallPreviewItem(
+                    Kind: RuntimeLockInstallPreviewChangeKinds.SessionReplayRequired,
+                    Summary: "runtime.lock.install.preview.session-replay-required",
+                    SubjectId: "session-a",
+                    RequiresConfirmation: true,
+                    SummaryParameters:
+                    [
+                        new RulesetExplainParameter("targetId", RulesetCapabilityBridge.FromObject("session-a")),
+                        new RulesetExplainParameter("targetKind", RulesetCapabilityBridge.FromObject(RuleProfileApplyTargetKinds.SessionLedger))
+                    ]),
+                new RuntimeLockInstallPreviewItem(
+                    Kind: RuntimeLockInstallPreviewChangeKinds.RuntimeLockPinned,
+                    Summary: "runtime.lock.install.preview.runtime-lock-pinned",
+                    SubjectId: "runtime-lock-a",
+                    SummaryParameters:
+                    [
+                        new RulesetExplainParameter("runtimeFingerprint", RulesetCapabilityBridge.FromObject("sha256:compat-runtime")),
+                        new RulesetExplainParameter("lockId", RulesetCapabilityBridge.FromObject("runtime-lock-a"))
+                    ])
+            ],
+            Warnings:
+            [
+                new RuntimeInspectorWarning(
+                    Kind: RuntimeInspectorWarningKinds.Trust,
+                    Severity: RuntimeInspectorWarningSeverityLevels.Info,
+                    Message: "runtime.lock.install.warning.local-only",
+                    SubjectId: "runtime-lock-a"),
+                new RuntimeInspectorWarning(
+                    Kind: RuntimeInspectorWarningKinds.ProviderBinding,
+                    Severity: RuntimeInspectorWarningSeverityLevels.Warning,
+                    Message: "runtime.lock.install.warning.runtime-review",
+                    SubjectId: "runtime-lock-a",
+                    MessageParameters:
+                    [
+                        new RulesetExplainParameter("rulePackCount", RulesetCapabilityBridge.FromObject(2))
+                    ]),
+            ],
+            RequiresConfirmation: false);
+    }
+
+    private static RuntimeLockInstallPreviewReceipt CreateRuntimeLockInstallPreviewFixtureB()
+    {
+        return new RuntimeLockInstallPreviewReceipt(
+            LockId: "runtime-lock-a",
+            Target: new RuleProfileApplyTarget(RuleProfileApplyTargetKinds.SessionLedger, "session-a"),
+            RuntimeLock: CreateCompatibilityRuntimeLockFixtureB(),
+            Changes:
+            [
+                new RuntimeLockInstallPreviewItem(
+                    Kind: RuntimeLockInstallPreviewChangeKinds.RuntimeLockPinned,
+                    Summary: "runtime.lock.install.preview.runtime-lock-pinned",
+                    SubjectId: "runtime-lock-a",
+                    SummaryKey: "runtime.lock.install.preview.runtime-lock-pinned",
+                    SummaryParameters:
+                    [
+                        new RulesetExplainParameter("lockId", RulesetCapabilityBridge.FromObject("runtime-lock-a")),
+                        new RulesetExplainParameter("runtimeFingerprint", RulesetCapabilityBridge.FromObject("sha256:compat-runtime"))
+                    ]),
+                new RuntimeLockInstallPreviewItem(
+                    Kind: RuntimeLockInstallPreviewChangeKinds.SessionReplayRequired,
+                    Summary: "runtime.lock.install.preview.session-replay-required",
+                    SubjectId: "session-a",
+                    RequiresConfirmation: true,
+                    SummaryKey: "runtime.lock.install.preview.session-replay-required",
+                    SummaryParameters:
+                    [
+                        new RulesetExplainParameter("targetKind", RulesetCapabilityBridge.FromObject(RuleProfileApplyTargetKinds.SessionLedger)),
+                        new RulesetExplainParameter("targetId", RulesetCapabilityBridge.FromObject("session-a"))
+                    ])
+            ],
+            Warnings:
+            [
+                new RuntimeInspectorWarning(
+                    Kind: RuntimeInspectorWarningKinds.ProviderBinding,
+                    Severity: RuntimeInspectorWarningSeverityLevels.Warning,
+                    Message: "runtime.lock.install.warning.runtime-review",
+                    SubjectId: "runtime-lock-a",
+                    MessageKey: "runtime.lock.install.warning.runtime-review",
+                    MessageParameters:
+                    [
+                        new RulesetExplainParameter("rulePackCount", RulesetCapabilityBridge.FromObject(2))
+                    ]),
+                new RuntimeInspectorWarning(
+                    Kind: RuntimeInspectorWarningKinds.Trust,
+                    Severity: RuntimeInspectorWarningSeverityLevels.Info,
+                    Message: "runtime.lock.install.warning.local-only",
+                    SubjectId: "runtime-lock-a",
+                    MessageKey: "runtime.lock.install.warning.local-only")
+            ],
+            RequiresConfirmation: true);
+    }
+
+    private static BuildKitManifest CreateBuildKitManifestFixtureA()
+    {
+        return new BuildKitManifest(
+            BuildKitId: "starter-kit",
+            Version: "1.0.0",
+            Title: "Starter Kit",
+            Description: "BuildKit normalization fixture.",
+            Targets: [RulesetDefaults.Sr5, " SR5 "],
+            RuntimeRequirements:
+            [
+                new BuildKitRuntimeRequirement(
+                    RulesetId: " SR5 ",
+                    RequiredRuntimeFingerprints: ["sha256:b", "sha256:a", "sha256:b"],
+                    RequiredRulePacks:
+                    [
+                        new ArtifactVersionReference("house-rules", "1.0.0"),
+                        new ArtifactVersionReference("combat-pack", "2.0.0")
+                    ])
+            ],
+            Prompts:
+            [
+                new BuildKitPromptDescriptor(
+                    PromptId: " path ",
+                    Kind: BuildKitPromptKinds.Choice,
+                    Label: " Path ",
+                    Options:
+                    [
+                        new BuildKitPromptOption(" mage ", " Mage "),
+                        new BuildKitPromptOption(" street ", " Street ")
+                    ],
+                    Required: true),
+                new BuildKitPromptDescriptor(
+                    PromptId: "priority",
+                    Kind: BuildKitPromptKinds.Choice,
+                    Label: "Priority",
+                    Options:
+                    [
+                        new BuildKitPromptOption("A", "A"),
+                        new BuildKitPromptOption("B", "B")
+                    ])
+            ],
+            Actions:
+            [
+                new BuildKitActionDescriptor(
+                    ActionId: " set-note ",
+                    Kind: BuildKitActionKinds.SetMetadata,
+                    TargetId: "workspace",
+                    Notes: " starter "),
+                new BuildKitActionDescriptor(
+                    ActionId: "apply-path",
+                    Kind: BuildKitActionKinds.ApplyChoice,
+                    TargetId: "career-path",
+                    PromptId: "path")
+            ],
+            Visibility: " local-only ",
+            TrustTier: " local-only ");
+    }
+
+    private static BuildKitManifest CreateBuildKitManifestFixtureB()
+    {
+        return new BuildKitManifest(
+            BuildKitId: "starter-kit",
+            Version: "1.0.0",
+            Title: "Starter Kit",
+            Description: "BuildKit normalization fixture.",
+            Targets: ["sr5"],
+            RuntimeRequirements:
+            [
+                new BuildKitRuntimeRequirement(
+                    RulesetId: "sr5",
+                    RequiredRuntimeFingerprints: ["sha256:a", "sha256:b"],
+                    RequiredRulePacks:
+                    [
+                        new ArtifactVersionReference("combat-pack", "2.0.0"),
+                        new ArtifactVersionReference("house-rules", "1.0.0")
+                    ])
+            ],
+            Prompts:
+            [
+                new BuildKitPromptDescriptor(
+                    PromptId: "priority",
+                    Kind: BuildKitPromptKinds.Choice,
+                    Label: "Priority",
+                    Options:
+                    [
+                        new BuildKitPromptOption("B", "B"),
+                        new BuildKitPromptOption("A", "A")
+                    ]),
+                new BuildKitPromptDescriptor(
+                    PromptId: "path",
+                    Kind: BuildKitPromptKinds.Choice,
+                    Label: "Path",
+                    Options:
+                    [
+                        new BuildKitPromptOption("street", "Street"),
+                        new BuildKitPromptOption("mage", "Mage")
+                    ],
+                    Required: true)
+            ],
+            Actions:
+            [
+                new BuildKitActionDescriptor(
+                    ActionId: "apply-path",
+                    Kind: BuildKitActionKinds.ApplyChoice,
+                    TargetId: "career-path",
+                    PromptId: "path"),
+                new BuildKitActionDescriptor(
+                    ActionId: "set-note",
+                    Kind: BuildKitActionKinds.SetMetadata,
+                    TargetId: "workspace",
+                    Notes: "starter")
+            ],
+            Visibility: ArtifactVisibilityModes.LocalOnly,
+            TrustTier: ArtifactTrustTiers.LocalOnly);
+    }
+
+    private static RuntimeLockInstallCandidate CreateRuntimeLockInstallCandidateFixtureA()
+    {
+        return new RuntimeLockInstallCandidate(
+            TargetKind: RuleProfileApplyTargetKinds.SessionLedger,
+            TargetId: "session-a",
+            Entry: CreateRuntimeLockRegistryEntry("runtime-lock-a", CreateCompatibilityRuntimeLockFixtureA()),
+            Diagnostics:
+            [
+                new RuntimeLockCompatibilityDiagnostic(
+                    State: RuntimeLockCompatibilityStates.MissingPack,
+                    Message: "runtime.lock.compatibility.missing-pack",
+                    RequiredRulesetId: RulesetDefaults.Sr5,
+                    RequiredRuntimeFingerprint: "sha256:compat-runtime",
+                    MessageParameters:
+                    [
+                        new RulesetExplainParameter("version", RulesetCapabilityBridge.FromObject("1.0.0")),
+                        new RulesetExplainParameter("packId", RulesetCapabilityBridge.FromObject("missing-pack"))
+                    ]),
+                new RuntimeLockCompatibilityDiagnostic(
+                    State: RuntimeLockCompatibilityStates.RebindRequired,
+                    Message: "runtime.lock.compatibility.rebind-required",
+                    RequiredRulesetId: RulesetDefaults.Sr5,
+                    RequiredRuntimeFingerprint: "sha256:compat-runtime")
+            ],
+            CanInstall: true);
+    }
+
+    private static RuntimeLockInstallCandidate CreateRuntimeLockInstallCandidateFixtureB()
+    {
+        return new RuntimeLockInstallCandidate(
+            TargetKind: RuleProfileApplyTargetKinds.SessionLedger,
+            TargetId: "session-a",
+            Entry: CreateRuntimeLockRegistryEntry("runtime-lock-a", CreateCompatibilityRuntimeLockFixtureB()),
+            Diagnostics:
+            [
+                new RuntimeLockCompatibilityDiagnostic(
+                    State: RuntimeLockCompatibilityStates.RebindRequired,
+                    Message: "runtime.lock.compatibility.rebind-required",
+                    RequiredRulesetId: RulesetDefaults.Sr5,
+                    RequiredRuntimeFingerprint: "sha256:compat-runtime",
+                    MessageKey: "runtime.lock.compatibility.rebind-required"),
+                new RuntimeLockCompatibilityDiagnostic(
+                    State: RuntimeLockCompatibilityStates.MissingPack,
+                    Message: "runtime.lock.compatibility.missing-pack",
+                    RequiredRulesetId: RulesetDefaults.Sr5,
+                    RequiredRuntimeFingerprint: "sha256:compat-runtime",
+                    MessageKey: "runtime.lock.compatibility.missing-pack",
+                    MessageParameters:
+                    [
+                        new RulesetExplainParameter("packId", RulesetCapabilityBridge.FromObject("missing-pack")),
+                        new RulesetExplainParameter("version", RulesetCapabilityBridge.FromObject("1.0.0"))
+                    ])
+            ],
+            CanInstall: false);
+    }
+
+    private static ResolvedRuntimeLock CreateCompatibilityRuntimeLockFixtureA()
+    {
+        return new ResolvedRuntimeLock(
+            RulesetId: RulesetDefaults.Sr5,
+            ContentBundles:
+            [
+                new ContentBundleDescriptor(
+                    BundleId: "content-bundle-z",
+                    RulesetId: RulesetDefaults.Sr5,
+                    Version: "1.0.0",
+                    Title: "Content Z",
+                    Description: "Z bundle",
+                    AssetPaths: ["z.xml", "a.xml"]),
+                new ContentBundleDescriptor(
+                    BundleId: "content-bundle-a",
+                    RulesetId: RulesetDefaults.Sr5,
+                    Version: "1.0.0",
+                    Title: "Content A",
+                    Description: "A bundle",
+                    AssetPaths: ["b.xml", "a.xml"])
+            ],
+            RulePacks:
+            [
+                new ArtifactVersionReference("house-rules", "1.0.0"),
+                new ArtifactVersionReference("combat-pack", "2.0.0")
+            ],
+            ProviderBindings: new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                [RulePackCapabilityIds.SessionQuickActions] = "combat-pack/session.quick-actions",
+                [RulePackCapabilityIds.DeriveStat] = "house-rules/derive.stat"
+            },
+            EngineApiVersion: "rulepack-v1",
+            RuntimeFingerprint: "sha256:compat-runtime");
+    }
+
+    private static ResolvedRuntimeLock CreateCompatibilityRuntimeLockFixtureB()
+    {
+        return new ResolvedRuntimeLock(
+            RulesetId: " sr5 ",
+            ContentBundles:
+            [
+                new ContentBundleDescriptor(
+                    BundleId: "content-bundle-a",
+                    RulesetId: " sr5 ",
+                    Version: "1.0.0",
+                    Title: "Content A",
+                    Description: "A bundle",
+                    AssetPaths: ["a.xml", "b.xml"]),
+                new ContentBundleDescriptor(
+                    BundleId: "content-bundle-z",
+                    RulesetId: "sr5",
+                    Version: "1.0.0",
+                    Title: "Content Z",
+                    Description: "Z bundle",
+                    AssetPaths: ["a.xml", "z.xml"])
+            ],
+            RulePacks:
+            [
+                new ArtifactVersionReference("combat-pack", "2.0.0"),
+                new ArtifactVersionReference("house-rules", "1.0.0")
+            ],
+            ProviderBindings: new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                [RulePackCapabilityIds.DeriveStat] = "house-rules/derive.stat",
+                [RulePackCapabilityIds.SessionQuickActions] = "combat-pack/session.quick-actions"
+            },
+            EngineApiVersion: "rulepack-v1",
+            RuntimeFingerprint: "sha256:compat-runtime");
+    }
+
+    private static RuntimeLockRegistryEntry CreateRuntimeLockRegistryEntry(string lockId, ResolvedRuntimeLock runtimeLock)
+    {
+        return new RuntimeLockRegistryEntry(
+            LockId: lockId,
+            Owner: OwnerScope.LocalSingleUser,
+            Title: $"{lockId} title",
+            Visibility: ArtifactVisibilityModes.LocalOnly,
+            CatalogKind: RuntimeLockCatalogKinds.Saved,
+            RuntimeLock: runtimeLock,
+            UpdatedAtUtc: DateTimeOffset.UnixEpoch.AddHours(2),
+            Install: new ArtifactInstallState(ArtifactInstallStates.Available));
+    }
+
+    private static BuildKitRegistryEntry CreateBuildKitRegistryEntry(string buildKitId, BuildKitManifest manifest)
+    {
+        BuildKitManifest normalizedManifest = RuntimeCompatibilityContractNormalizer.NormalizeBuildKitManifest(
+            manifest with { BuildKitId = buildKitId });
+        return new BuildKitRegistryEntry(
+            Manifest: normalizedManifest,
+            Owner: OwnerScope.LocalSingleUser,
+            Visibility: ArtifactVisibilityModes.LocalOnly,
+            PublicationStatus: BuildKitPublicationStatuses.Published,
+            UpdatedAtUtc: DateTimeOffset.UnixEpoch.AddHours(2));
+    }
+
+    private static string FormatCompatibilityRow(HubProjectCompatibilityRow row)
+    {
+        return string.Join(
+            "|",
+            row.Kind,
+            row.State,
+            row.CurrentValue,
+            row.RequiredValue ?? string.Empty,
+            row.Notes ?? string.Empty,
+            row.LabelKey ?? string.Empty,
+            row.CurrentValueKey ?? string.Empty,
+            row.RequiredValueKey ?? string.Empty,
+            row.NotesKey ?? string.Empty,
+            string.Join(",", (row.NotesParameters ?? []).OrderBy(static parameter => parameter.Name, StringComparer.Ordinal).Select(static parameter => $"{parameter.Name}:{parameter.Value.StringValue ?? parameter.Value.IntegerValue?.ToString() ?? string.Empty}")));
+    }
+
+    private static string FormatCapabilityProjection(HubProjectCapabilityDescriptorProjection capability)
+    {
+        return string.Join(
+            "|",
+            capability.CapabilityId,
+            capability.ProviderId ?? string.Empty,
+            capability.PackId ?? string.Empty,
+            capability.SessionSafe,
+            capability.Explainable,
+            capability.TitleKey ?? string.Empty);
+    }
+
     private sealed class RuleProfileRegistryServiceStub : IRuleProfileRegistryService
     {
         private readonly IReadOnlyList<RuleProfileRegistryEntry> _entries;
@@ -1262,6 +1824,33 @@ internal static class CoreEngineTests
 
         public RulePackRegistryEntry? Get(OwnerScope owner, string packId, string? rulesetId = null)
             => _entries.FirstOrDefault(entry => string.Equals(entry.Manifest.PackId, packId, StringComparison.Ordinal));
+    }
+
+    private sealed class BuildKitRegistryServiceStub : IBuildKitRegistryService
+    {
+        private readonly IReadOnlyList<BuildKitRegistryEntry> _entries;
+
+        public BuildKitRegistryServiceStub(IReadOnlyList<BuildKitRegistryEntry> entries)
+        {
+            _entries = entries;
+        }
+
+        public IReadOnlyList<BuildKitRegistryEntry> List(OwnerScope owner, string? rulesetId = null)
+        {
+            string? normalizedRulesetId = RulesetDefaults.NormalizeOptional(rulesetId);
+            return _entries
+                .Where(entry => normalizedRulesetId is null || entry.Manifest.Targets.Any(target => string.Equals(target, normalizedRulesetId, StringComparison.Ordinal)))
+                .OrderBy(static entry => entry.Manifest.BuildKitId, StringComparer.Ordinal)
+                .ToArray();
+        }
+
+        public BuildKitRegistryEntry? Get(OwnerScope owner, string buildKitId, string? rulesetId = null)
+        {
+            string? normalizedRulesetId = RulesetDefaults.NormalizeOptional(rulesetId);
+            return _entries.FirstOrDefault(entry =>
+                string.Equals(entry.Manifest.BuildKitId, buildKitId, StringComparison.Ordinal)
+                && (normalizedRulesetId is null || entry.Manifest.Targets.Any(target => string.Equals(target, normalizedRulesetId, StringComparison.Ordinal))));
+        }
     }
 
     private sealed class RuntimeLockRegistryServiceStub : IRuntimeLockRegistryService
