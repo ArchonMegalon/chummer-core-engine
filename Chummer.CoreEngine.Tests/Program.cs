@@ -32,6 +32,7 @@ internal static class CoreEngineTests
             CapabilityDescriptorsEmitLocalizationKeys();
             ExperimentalRulesetsEmitDiagnosticMessageKeys();
             SessionReplayDiagnosticsStayKeyed();
+            SelectionAndFilterDisabledReasonsStayKeyed();
             SessionEventCompatibilityContractsRoundTripToCanonicalEnvelope();
             RuntimeInspectorProjectsCapabilityAndCompatibilityKeys();
             RuntimeInspectorProjectionIsDeterministicAcrossPackAndBindingOrder();
@@ -160,6 +161,83 @@ internal static class CoreEngineTests
         AssertEx.True(
             projection.Diagnostics.Any(diagnostic => string.Equals(diagnostic.MessageKey, "session.replay.tracker.missing-id", StringComparison.Ordinal)),
             "Session replay should keep missing tracker identifiers keyed.");
+    }
+
+    private static void SelectionAndFilterDisabledReasonsStayKeyed()
+    {
+        DisabledReasonPayload disabledReason = new(
+            ReasonKey: "ruleset.disabled.availability",
+            ReasonParameters:
+            [
+                new RulesetExplainParameter("required", RulesetCapabilityBridge.FromObject(12)),
+                new RulesetExplainParameter("actual", RulesetCapabilityBridge.FromObject(8))
+            ]);
+        FilterChoicesOutput filterOutput = new(
+            EnabledIds: ["item-a"],
+            DisabledReasons: new Dictionary<string, DisabledReasonPayload>(StringComparer.Ordinal)
+            {
+                ["item-b"] = disabledReason
+            });
+        SessionQuickActionOutput quickActionOutput = new(
+            Allowed: false,
+            DisabledReason: disabledReason,
+            Diagnostics: []);
+        SessionQuickActionDescriptor sessionAction = new(
+            ActionId: "heal",
+            Label: "Quick Heal",
+            CapabilityId: RulePackCapabilityIds.SessionQuickActions,
+            IsEnabled: false,
+            DisabledReasonKey: "session.quick-action.cooldown",
+            DisabledReasonParameters:
+            [
+                new RulesetExplainParameter("remaining", RulesetCapabilityBridge.FromObject(2))
+            ]);
+        HubProjectAction hubAction = new(
+            ActionId: "apply",
+            Label: "Apply",
+            Kind: HubProjectActionKinds.Apply,
+            Enabled: false,
+            DisabledReasonKey: "hub.action.blocked.missing-runtime",
+            DisabledReasonParameters:
+            [
+                new RulesetExplainParameter("runtimeFingerprint", RulesetCapabilityBridge.FromObject("sha256:missing"))
+            ]);
+        AiHubProjectActionProjection aiAction = new(
+            ActionId: "apply",
+            Label: "Apply",
+            Kind: HubProjectActionKinds.Apply,
+            Enabled: false,
+            DisabledReasonKey: "hub.action.blocked.missing-runtime",
+            DisabledReasonParameters:
+            [
+                new RulesetExplainParameter("runtimeFingerprint", RulesetCapabilityBridge.FromObject("sha256:missing"))
+            ]);
+
+        AssertEx.Equal(
+            "ruleset.disabled.availability",
+            DisabledReasonPayloadLocalization.ResolveReasonKey(filterOutput.DisabledReasons["item-b"]),
+            "Filter choice disabled reasons should remain keyed.");
+        AssertEx.Equal(
+            "ruleset.disabled.availability",
+            DisabledReasonPayloadLocalization.ResolveReasonKey(quickActionOutput.DisabledReason!),
+            "Session quick-action capability outputs should remain keyed.");
+        AssertEx.Equal(
+            "session.quick-action.cooldown",
+            SessionProjectionContractLocalization.ResolveDisabledReasonKey(sessionAction),
+            "Session quick-action projections should resolve disabled reason keys.");
+        AssertEx.Equal(
+            "hub.action.blocked.missing-runtime",
+            HubProjectDetailContractLocalization.ResolveDisabledReasonKey(hubAction),
+            "Hub action projections should resolve disabled reason keys.");
+        AssertEx.Equal(
+            "hub.action.blocked.missing-runtime",
+            AiHubProjectSearchContractLocalization.ResolveDisabledReasonKey(aiAction),
+            "AI hub action projections should resolve disabled reason keys.");
+        AssertEx.True(
+            SessionProjectionContractLocalization.ResolveDisabledReasonParameters(sessionAction).Count == 1
+            && HubProjectDetailContractLocalization.ResolveDisabledReasonParameters(hubAction).Count == 1
+            && AiHubProjectSearchContractLocalization.ResolveDisabledReasonParameters(aiAction).Count == 1,
+            "Disabled reason key payloads should preserve parameter envelopes across selection/filter projections.");
     }
 
     private static void SessionEventCompatibilityContractsRoundTripToCanonicalEnvelope()
@@ -485,11 +563,30 @@ internal static class CoreEngineTests
             "combat-pack",
             projection.Provenance.PackId,
             "Explain provenance should resolve the bound RulePack id.");
+        AssertEx.NotNull(
+            projection.ProvenanceEnvelope,
+            "Explain projections should emit structured provenance envelopes.");
+        AssertEx.Equal(
+            AiExplainEnvelopeSchemas.ProvenanceV1,
+            projection.ProvenanceEnvelope!.Schema,
+            "Explain provenance envelopes should publish the canonical schema marker.");
+        AssertEx.NotNull(
+            projection.EvidenceEnvelope,
+            "Explain projections should emit structured evidence envelopes.");
+        AssertEx.Equal(
+            AiExplainEnvelopeSchemas.EvidenceV1,
+            projection.EvidenceEnvelope!.Schema,
+            "Explain evidence envelopes should publish the canonical schema marker.");
         AssertEx.True(
             projection.Evidence is { Count: >= 5 },
             "Explain projections should emit machine-readable evidence pointers.");
+        IReadOnlyList<AiExplainEvidencePointerProjection> explainEvidence = projection.Evidence!;
+        AiExplainEvidenceEnvelopeProjection evidenceEnvelope = projection.EvidenceEnvelope!;
         AssertEx.True(
-            projection.Evidence!.Any(pointer =>
+            evidenceEnvelope.Pointers.Count == explainEvidence.Count,
+            "Explain evidence envelopes should preserve the deterministic evidence pointer set.");
+        AssertEx.True(
+            explainEvidence.Any(pointer =>
                 string.Equals(pointer.Kind, RulesetEvidencePointerKinds.RuleReference, StringComparison.Ordinal)
                 && string.Equals(pointer.Pointer, "sr5.combat.initiative", StringComparison.Ordinal)),
             "Explain projections should surface rule-reference evidence from the underlying trace.");
@@ -541,6 +638,12 @@ internal static class CoreEngineTests
             "combat-pack",
             projection.PackId,
             "Explain projections should fall back to trace pack ids when provider bindings cannot resolve a pack.");
+        AssertEx.NotNull(
+            projection.ProvenanceEnvelope,
+            "Explain projections should preserve provenance envelopes when runtime/session contexts diverge.");
+        AssertEx.NotNull(
+            projection.EvidenceEnvelope,
+            "Explain projections should preserve evidence envelopes when runtime/session contexts diverge.");
         AssertEx.True(
             projection.Evidence is { Count: > 0 }
             && !projection.Evidence.Any(pointer =>
@@ -553,6 +656,7 @@ internal static class CoreEngineTests
     {
         AssertGoldenJsonFixture("runtime-summary.golden.json", CreateRuntimeSummaryFixture());
         AssertGoldenJsonFixture("explain-trace.golden.json", CreateExplainTraceFixture());
+        AssertGoldenJsonFixture("runtime-lock-diff.golden.json", CreateRuntimeLockDiffFixture());
         AssertGoldenJsonFixture("session-ledger.golden.json", CreateSessionLedgerFixture());
     }
 
@@ -2270,6 +2374,42 @@ internal static class CoreEngineTests
 
     private static ExplainTraceDto CreateExplainTraceFixture()
     {
+        ExplainProvenanceDto provenance = new(
+            RuntimeFingerprint: "sha256:golden-runtime",
+            RulesetId: RulesetDefaults.Sr5,
+            EngineApiVersion: "engine-v2",
+            CatalogKind: RuntimeLockCatalogKinds.Published,
+            RuntimeTitle: "Official SR5 Runtime",
+            ProfileId: "official.sr5.ops",
+            ProfileTitle: "Operations Profile",
+            ProviderId: "combat-pack/derive.initiative",
+            PackId: "combat-pack",
+            RulePacks: ["combat-pack", "quality-pack"],
+            ProviderBindings: new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                [RulePackCapabilityIds.DeriveStat] = "combat-pack/derive.initiative",
+                [RulePackCapabilityIds.SessionQuickActions] = "combat-pack/session.quickaction"
+            });
+        ExplainEvidencePointerDto[] evidence =
+        [
+            new ExplainEvidencePointerDto(
+                Kind: RulesetEvidencePointerKinds.RuntimeLock,
+                Pointer: "sha256:golden-runtime",
+                LabelKey: "ruleset.explain.evidence.runtime-lock",
+                LabelParameters:
+                [
+                    new RulesetExplainParameter("runtimeFingerprint", RulesetCapabilityBridge.FromObject("sha256:golden-runtime"))
+                ]),
+            new ExplainEvidencePointerDto(
+                Kind: RulesetEvidencePointerKinds.RuleProfile,
+                Pointer: "official.sr5.ops",
+                LabelKey: "ruleset.explain.evidence.rule-profile",
+                LabelParameters:
+                [
+                    new RulesetExplainParameter("profileId", RulesetCapabilityBridge.FromObject("official.sr5.ops"))
+                ])
+        ];
+
         return new ExplainTraceDto(
             TargetKey: "initiative.total",
             FinalValue: RulesetCapabilityBridge.FromObject(14),
@@ -2323,41 +2463,81 @@ internal static class CoreEngineTests
                     Certain: null,
                     RuleId: null)
             ],
-            Provenance: new ExplainProvenanceDto(
-                RuntimeFingerprint: "sha256:golden-runtime",
-                RulesetId: RulesetDefaults.Sr5,
-                EngineApiVersion: "engine-v2",
-                CatalogKind: RuntimeLockCatalogKinds.Published,
-                RuntimeTitle: "Official SR5 Runtime",
-                ProfileId: "official.sr5.ops",
-                ProfileTitle: "Operations Profile",
+            Provenance: provenance,
+            Evidence: evidence,
+            ProvenanceEnvelope: new ExplainProvenanceEnvelopeDto(
+                Schema: ExplainEnvelopeSchemas.ProvenanceV1,
+                Provenance: provenance,
+                CapabilityId: RulePackCapabilityIds.DeriveStat,
                 ProviderId: "combat-pack/derive.initiative",
-                PackId: "combat-pack",
-                RulePacks: ["combat-pack", "quality-pack"],
-                ProviderBindings: new Dictionary<string, string>(StringComparer.Ordinal)
-                {
-                    [RulePackCapabilityIds.DeriveStat] = "combat-pack/derive.initiative",
-                    [RulePackCapabilityIds.SessionQuickActions] = "combat-pack/session.quickaction"
-                }),
-            Evidence:
+                PackId: "combat-pack"),
+            EvidenceEnvelope: new ExplainEvidenceEnvelopeDto(
+                Schema: ExplainEnvelopeSchemas.EvidenceV1,
+                Pointers: evidence,
+                CapabilityId: RulePackCapabilityIds.DeriveStat,
+                ProviderId: "combat-pack/derive.initiative",
+                PackId: "combat-pack"));
+    }
+
+    private static RuntimeLockDiffProjection CreateRuntimeLockDiffFixture()
+    {
+        DefaultRuntimeLockDiffService service = new();
+
+        ResolvedRuntimeLock before = new(
+            RulesetId: RulesetDefaults.Sr5,
+            ContentBundles:
             [
-                new ExplainEvidencePointerDto(
-                    Kind: RulesetEvidencePointerKinds.RuntimeLock,
-                    Pointer: "sha256:golden-runtime",
-                    LabelKey: "ruleset.explain.evidence.runtime-lock",
-                    LabelParameters:
-                    [
-                        new RulesetExplainParameter("runtimeFingerprint", RulesetCapabilityBridge.FromObject("sha256:golden-runtime"))
-                    ]),
-                new ExplainEvidencePointerDto(
-                    Kind: RulesetEvidencePointerKinds.RuleProfile,
-                    Pointer: "official.sr5.ops",
-                    LabelKey: "ruleset.explain.evidence.rule-profile",
-                    LabelParameters:
-                    [
-                        new RulesetExplainParameter("profileId", RulesetCapabilityBridge.FromObject("official.sr5.ops"))
-                    ])
-            ]);
+                new ContentBundleDescriptor(
+                    BundleId: "official.sr5.base",
+                    RulesetId: RulesetDefaults.Sr5,
+                    Version: "schema-1",
+                    Title: "SR5 Base",
+                    Description: "Built-in base content.",
+                    AssetPaths: ["data/", "lang/"])
+            ],
+            RulePacks:
+            [
+                new ArtifactVersionReference("combat-pack", "1.0.0")
+            ],
+            ProviderBindings: new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                [RulePackCapabilityIds.DeriveStat] = "combat-pack/derive.initiative"
+            },
+            EngineApiVersion: "engine-v1",
+            RuntimeFingerprint: "sha256:before");
+        ResolvedRuntimeLock after = new(
+            RulesetId: RulesetDefaults.Sr5,
+            ContentBundles:
+            [
+                new ContentBundleDescriptor(
+                    BundleId: "campaign.seattle",
+                    RulesetId: RulesetDefaults.Sr5,
+                    Version: "2026.03",
+                    Title: "Seattle Campaign",
+                    Description: "Campaign bundle.",
+                    AssetPaths: ["data/", "media/"]),
+                new ContentBundleDescriptor(
+                    BundleId: "official.sr5.base",
+                    RulesetId: RulesetDefaults.Sr5,
+                    Version: "schema-1",
+                    Title: "SR5 Base",
+                    Description: "Built-in base content.",
+                    AssetPaths: ["data/", "lang/"])
+            ],
+            RulePacks:
+            [
+                new ArtifactVersionReference("combat-pack", "1.1.0"),
+                new ArtifactVersionReference("quality-pack", "2.0.0")
+            ],
+            ProviderBindings: new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                [RulePackCapabilityIds.DeriveStat] = "combat-pack/derive.initiative.v2",
+                [RulePackCapabilityIds.SessionQuickActions] = "quality-pack/session.quickaction"
+            },
+            EngineApiVersion: "engine-v2",
+            RuntimeFingerprint: "sha256:after");
+
+        return service.Diff(before, after);
     }
 
     private static SessionLedger CreateSessionLedgerFixture()
@@ -2662,6 +2842,9 @@ internal static class CoreEngineTests
         AssertEx.True(
             !queueText.Contains("Remaining hardening and integration work is still tracked as coarse queue slices rather than milestone-mapped task coverage", StringComparison.Ordinal),
             "Published queue overlay should not regress back to the coarse hardening/integration queue slice.");
+        AssertEx.True(
+            !queueText.Contains("Cross-repo contract reset work is not yet represented as explicit core milestones", StringComparison.Ordinal),
+            "Published queue overlay should keep cross-repo contract reset follow-through mapped to explicit executable milestones.");
         AssertEx.True(
             queueText.Contains("Milestone `A0.5`", StringComparison.Ordinal)
             && queueText.Contains("`WL-072`", StringComparison.Ordinal)

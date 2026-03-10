@@ -47,13 +47,13 @@ public sealed record AvailabilityItemOutput(int AvailabilityValue, IReadOnlyList
 public sealed record PriceItemInput(string ItemId, string CharacterId, int Quantity);
 public sealed record PriceItemOutput(decimal Price, string Currency, IReadOnlyList<RulesetCapabilityDiagnostic> Diagnostics);
 public sealed record FilterChoicesInput(string CatalogId, string CharacterId, IReadOnlyList<string> CandidateIds);
-public sealed record FilterChoicesOutput(IReadOnlyList<string> EnabledIds, IReadOnlyDictionary<string, string> DisabledReasonKeys);
+public sealed record FilterChoicesOutput(IReadOnlyList<string> EnabledIds, IReadOnlyDictionary<string, DisabledReasonPayload> DisabledReasons);
 public sealed record EffectApplyInput(string EffectId, string CharacterId, IReadOnlyDictionary<string, RulesetCapabilityValue> Context);
 public sealed record EffectApplyOutput(bool Applied, IReadOnlyList<RulesetCapabilityDiagnostic> Diagnostics);
 public sealed record BuildLabRecommendationInput(string CharacterId, int KarmaBudget, IReadOnlyList<string> DesiredRoleTags);
 public sealed record BuildLabRecommendationOutput(IReadOnlyList<string> RecommendationIds, IReadOnlyList<RulesetCapabilityDiagnostic> Diagnostics);
 public sealed record SessionQuickActionInput(string ActionId, string CharacterId, IReadOnlyDictionary<string, RulesetCapabilityValue> Context);
-public sealed record SessionQuickActionOutput(bool Allowed, string? DisabledReasonKey, IReadOnlyList<RulesetCapabilityDiagnostic> Diagnostics);
+public sealed record SessionQuickActionOutput(bool Allowed, DisabledReasonPayload? DisabledReason, IReadOnlyList<RulesetCapabilityDiagnostic> Diagnostics);
 
 public static class RulesetTypedCapabilityCatalog
 {

@@ -40,6 +40,8 @@ public sealed record HubProjectAction(
     string Kind,
     string? LinkTarget = null,
     bool Enabled = true,
+    string? DisabledReasonKey = null,
+    IReadOnlyList<RulesetExplainParameter>? DisabledReasonParameters = null,
     string? DisabledReason = null);
 
 public sealed record HubProjectCapabilityDescriptorProjection(
@@ -71,3 +73,21 @@ public sealed record HubProjectDetailProjection(
     IReadOnlyList<HubProjectAction> Actions,
     IReadOnlyList<HubProjectCapabilityDescriptorProjection>? Capabilities = null,
     HubPublisherSummary? Publisher = null);
+
+public static class HubProjectDetailContractLocalization
+{
+    public static string? ResolveDisabledReasonKey(HubProjectAction action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+
+        return string.IsNullOrWhiteSpace(action.DisabledReasonKey)
+            ? action.DisabledReason
+            : action.DisabledReasonKey;
+    }
+
+    public static IReadOnlyList<RulesetExplainParameter> ResolveDisabledReasonParameters(HubProjectAction action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        return action.DisabledReasonParameters ?? [];
+    }
+}

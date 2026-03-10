@@ -24,6 +24,12 @@ public static class AiExplainFragmentKinds
     public const string Note = "note";
 }
 
+public static class AiExplainEnvelopeSchemas
+{
+    public const string ProvenanceV1 = "ai.explain.provenance.v1";
+    public const string EvidenceV1 = "ai.explain.evidence.v1";
+}
+
 public sealed record AiExplainEvidencePointerProjection(
     string Kind,
     string Pointer,
@@ -58,6 +64,21 @@ public sealed record AiExplainValueProvenanceProjection(
     string? PackId = null,
     IReadOnlyList<string>? RulePacks = null,
     IReadOnlyDictionary<string, string>? ProviderBindings = null);
+
+public sealed record AiExplainValueProvenanceEnvelopeProjection(
+    string Schema,
+    AiExplainValueProvenanceProjection Provenance,
+    string? CapabilityId = null,
+    string? ProviderId = null,
+    string? PackId = null);
+
+public sealed record AiExplainEvidenceEnvelopeProjection(
+    string Schema,
+    IReadOnlyList<AiExplainEvidencePointerProjection> Pointers,
+    string? CapabilityId = null,
+    string? ProviderId = null,
+    string? PackId = null,
+    bool Deterministic = true);
 
 public sealed record AiExplainValueQuery(
     string? RuntimeFingerprint = null,
@@ -94,4 +115,6 @@ public sealed record AiExplainValueProjection(
     IReadOnlyList<RulesetCapabilityDiagnostic>? Diagnostics = null,
     AiExplainValueProvenanceProjection? Provenance = null,
     IReadOnlyList<AiExplainTraceStepProjection>? Trace = null,
-    IReadOnlyList<AiExplainEvidencePointerProjection>? Evidence = null);
+    IReadOnlyList<AiExplainEvidencePointerProjection>? Evidence = null,
+    AiExplainValueProvenanceEnvelopeProjection? ProvenanceEnvelope = null,
+    AiExplainEvidenceEnvelopeProjection? EvidenceEnvelope = null);

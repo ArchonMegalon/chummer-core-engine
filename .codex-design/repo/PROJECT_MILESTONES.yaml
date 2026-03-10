@@ -80,7 +80,7 @@ milestones:
       - Auditor queue-exhaustion findings from 2026-03-10 candidate IDs 3 and 4 are incorporated by milestone-mapped A0.5 and A6-A9 coverage plus explicit A6.1 evidence.
   - id: A7
     title: Structured Explain API hardening
-    status: open
+    status: done
     mapped_worklist:
       - WL-069
       - WL-076
@@ -90,15 +90,29 @@ milestones:
       - id: A7.1
         worklist: WL-076
         title: Expose keyed disabled-reason payloads across explainable selection and filter surfaces
+        status: done
+        evidence:
+          - Added `DisabledReasonPayload` plus localization helpers under `Chummer.Contracts/Rulesets/DisabledReasonContracts.cs` and switched typed filter/session capability outputs to keyed payload envelopes.
+          - Extended session/hub/AI action contracts with `DisabledReasonKey` and `DisabledReasonParameters` payloads to keep selection/filter disabled outcomes localization-safe.
+          - Added regression coverage in `SelectionAndFilterDisabledReasonsStayKeyed` to assert key/parameter preservation across filter, quick-action, hub, and AI projection surfaces.
       - id: A7.2
         worklist: WL-077
         title: Lock explain provenance and evidence envelopes
+        status: done
+        evidence:
+          - Added explicit explain provenance and evidence envelope DTO families in `Chummer.Contracts` and `Chummer.Contracts.AI` with stable schema markers.
+          - Hardened `DefaultAiExplainService` to emit deterministic evidence ordering and structured provenance/evidence envelopes alongside trace payloads.
+          - Extended explain regression assertions and the `explain-trace.golden.json` fixture to lock envelope shape, schema IDs, and pointer parity.
       - id: A7.3
         worklist: WL-078
         title: Add before and after runtime diff explain fixtures
+        status: done
+        evidence:
+          - Added `runtime-lock-diff.golden.json` fixture to lock runtime diff before/after projections, keyed reason metadata, and provider-binding lineage.
+          - Added fixture coverage via `CreateRuntimeLockDiffFixture` and `ContractGoldenJsonFixturesStayStable` so runtime diff explain-facing payloads remain deterministic.
     notes:
-      - Disabled and ineligible outcomes must remain localization-safe key and parameter payloads across engine-owned explain surfaces.
-      - Explain fixtures still need deterministic provenance, evidence, and runtime before or after diff coverage.
+      - A7.1 through A7.3 are complete with keyed disabled-reason payloads, explain provenance/evidence envelopes, and runtime before/after diff fixture coverage.
+      - Explain-facing projections now enforce schema-marked envelope shape and deterministic pointer ordering through fixture-backed regression tests.
   - id: A8
     title: Runtime and RulePack determinism hardening
     status: open

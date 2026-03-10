@@ -1,3 +1,5 @@
+using Chummer.Contracts.Rulesets;
+
 namespace Chummer.Contracts.AI;
 
 public static class AiHubProjectSearchApiOperations
@@ -45,6 +47,8 @@ public sealed record AiHubProjectActionProjection(
     string Label,
     string Kind,
     bool Enabled = true,
+    string? DisabledReasonKey = null,
+    IReadOnlyList<RulesetExplainParameter>? DisabledReasonParameters = null,
     string? DisabledReason = null);
 
 public sealed record AiHubProjectDetailProjection(
@@ -53,3 +57,21 @@ public sealed record AiHubProjectDetailProjection(
     IReadOnlyList<AiHubProjectFact> Facts,
     IReadOnlyList<AiHubProjectDependencyProjection> Dependencies,
     IReadOnlyList<AiHubProjectActionProjection> Actions);
+
+public static class AiHubProjectSearchContractLocalization
+{
+    public static string? ResolveDisabledReasonKey(AiHubProjectActionProjection action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+
+        return string.IsNullOrWhiteSpace(action.DisabledReasonKey)
+            ? action.DisabledReason
+            : action.DisabledReasonKey;
+    }
+
+    public static IReadOnlyList<RulesetExplainParameter> ResolveDisabledReasonParameters(AiHubProjectActionProjection action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        return action.DisabledReasonParameters ?? [];
+    }
+}
