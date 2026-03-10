@@ -24,3 +24,7 @@ items:
 - Keep cross-repo contract reset follow-through mapped as explicit core milestone
   `A0.5` and executable worklist `WL-072` until package-only consumer cutover allows
   deleting temporary source projects safely.
+- Keep remaining hardening and integration scope represented as milestone-mapped runnable
+  slices (`A6`-`A9`) instead of coarse queue-only tracking whenever queue overlays refresh.
+- Keep `A0.5` / `WL-072` open and executable until package-only consumer cutover acceptance
+  confirms temporary source-project deletion is safe to close.

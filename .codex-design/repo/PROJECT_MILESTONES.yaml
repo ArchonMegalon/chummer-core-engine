@@ -36,14 +36,14 @@ milestones:
       - ChummerDataViewer, CrashHandler, TextblockConverter, and Translator are classified as non-engine helper surfaces and kept out of the active engine verification boundary.
   - id: A0.5
     title: Cross-repo contract reset follow-through
-    status: done
+    status: open
     mapped_worklist:
       - WL-072
       - WL-085
     notes:
-      - `WL-072` completed on 2026-03-10 by deleting temporary source projects `Chummer.Presentation.Contracts` and `Chummer.RunServices.Contracts`.
-      - Canonical contract ownership now lives under `Chummer.Contracts` with no remaining direct project or solution references to the deleted temporary projects.
-      - Queue refresh maintenance on 2026-03-10 (`WL-085`) keeps A0.5 represented as explicit core milestone coverage while downstream package-only cutover verification stays observable.
+      - `WL-072` remains executable and in progress on 2026-03-10 while package-only consumer cutover acceptance remains open.
+      - Temporary source-project migration/removal edits are present, but A0.5 closure is deferred until package-only consumer adoption is confirmed and safe-delete sign-off is complete.
+      - Queue refresh maintenance on 2026-03-10 (`WL-085`) keeps A0.5 represented as explicit core milestone coverage so contract-reset follow-through stays visible until cutover closure.
   - id: A6
     title: Contract hardening
     status: done
