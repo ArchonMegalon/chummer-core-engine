@@ -1896,6 +1896,81 @@ internal static class CoreEngineTests
                 $"Presentation-owned contract '{fileName}' must not remain under Chummer.Contracts.");
         }
 
+        string coreContentContractsDirectory = Path.Combine(coreContractsRoot, "Content");
+        string[] coreOwnedRuntimeInstallAndBuildKitContracts =
+        [
+            "RuntimeLockInstallContracts.cs",
+            "RuntimeLockRegistryContracts.cs",
+            "BuildKitRegistryContracts.cs",
+            "BuildKitApplicationContracts.cs",
+            "ArtifactContracts.cs"
+        ];
+
+        foreach (string fileName in coreOwnedRuntimeInstallAndBuildKitContracts)
+        {
+            string canonicalPath = Path.Combine(coreContentContractsDirectory, fileName);
+            AssertEx.True(
+                File.Exists(canonicalPath),
+                $"A6.1 canonical contract '{fileName}' should live under Chummer.Contracts/Content.");
+            AssertEx.True(
+                !File.Exists(Path.Combine(presentationContractsRoot, "Presentation", fileName)),
+                $"A6.1 canonical contract '{fileName}' must not be owned by Chummer.Presentation.Contracts.");
+            AssertEx.True(
+                !File.Exists(Path.Combine(runServicesContractsRoot, "Hub", fileName)),
+                $"A6.1 canonical contract '{fileName}' must not be owned by Chummer.RunServices.Contracts/Hub.");
+            AssertEx.True(
+                !File.Exists(Path.Combine(runServicesContractsRoot, "AI", fileName)),
+                $"A6.1 canonical contract '{fileName}' must not be owned by Chummer.RunServices.Contracts/AI.");
+        }
+
+        string runtimeLockInstallContractsText = File.ReadAllText(Path.Combine(coreContentContractsDirectory, "RuntimeLockInstallContracts.cs"));
+        AssertEx.True(
+            runtimeLockInstallContractsText.Contains("BuildKitSelection", StringComparison.Ordinal)
+            && runtimeLockInstallContractsText.Contains("RuntimeLockInstallReceipt", StringComparison.Ordinal),
+            "Runtime lock install DTO ownership should keep BuildKit-selection install payloads in Chummer.Contracts.");
+
+        string runtimeLockRegistryContractsText = File.ReadAllText(Path.Combine(coreContentContractsDirectory, "RuntimeLockRegistryContracts.cs"));
+        AssertEx.True(
+            runtimeLockRegistryContractsText.Contains("RuntimeLockCompatibilityDiagnostic", StringComparison.Ordinal)
+            && runtimeLockRegistryContractsText.Contains("RuntimeLockInstallPreviewReceipt", StringComparison.Ordinal),
+            "Runtime compatibility diagnostics and install preview receipts should remain engine-owned contracts.");
+
+        string buildKitApplicationContractsText = File.ReadAllText(Path.Combine(coreContentContractsDirectory, "BuildKitApplicationContracts.cs"));
+        AssertEx.True(
+            buildKitApplicationContractsText.Contains("BuildKitValidationReceipt", StringComparison.Ordinal)
+            && buildKitApplicationContractsText.Contains("BuildKitApplicationReceipt", StringComparison.Ordinal),
+            "BuildKit validation and application DTOs should remain engine-owned contracts.");
+
+        string buildKitManifestContractsText = File.ReadAllText(Path.Combine(coreContentContractsDirectory, "ArtifactContracts.cs"));
+        AssertEx.True(
+            buildKitManifestContractsText.Contains("BuildKitManifest", StringComparison.Ordinal)
+            && buildKitManifestContractsText.Contains("BuildKitRuntimeRequirement", StringComparison.Ordinal),
+            "BuildKit manifest and runtime requirement DTOs should remain engine-owned contracts.");
+
+        string buildKitWorkbenchContractsPath = Path.Combine(presentationContractsRoot, "Presentation", "BuildKitWorkbenchContracts.cs");
+        AssertEx.True(
+            File.Exists(buildKitWorkbenchContractsPath),
+            "Presentation projections for BuildKit workbench should remain presentation-owned contracts.");
+
+        string hubCompatibilityContractsPath = Path.Combine(runServicesContractsRoot, "Hub", "HubProjectCompatibilityContracts.cs");
+        AssertEx.True(
+            File.Exists(hubCompatibilityContractsPath),
+            "Hub compatibility matrix projections should remain run-services-owned contracts.");
+
+        string hubInstallPreviewContractsPath = Path.Combine(runServicesContractsRoot, "Hub", "HubProjectInstallPreviewContracts.cs");
+        AssertEx.True(
+            File.Exists(hubInstallPreviewContractsPath),
+            "Hub install preview projections should remain run-services-owned contracts.");
+
+        string coreContentContractsText = string.Join(
+            "\n",
+            Directory.EnumerateFiles(coreContentContractsDirectory, "*.cs", SearchOption.TopDirectoryOnly).Select(File.ReadAllText));
+        AssertEx.True(
+            !coreContentContractsText.Contains("BuildKitWorkbenchSurfaceIds", StringComparison.Ordinal)
+            && !coreContentContractsText.Contains("HubProjectCompatibilityMatrix", StringComparison.Ordinal)
+            && !coreContentContractsText.Contains("HubProjectInstallPreviewReceipt", StringComparison.Ordinal),
+            "Presentation and run-services compatibility projection DTOs must not leak into engine-owned content contracts.");
+
         string[] hostedContractSources = Directory.EnumerateFiles(runServicesContractsRoot, "*.cs", SearchOption.AllDirectories)
             .Where(path => path.Contains($"{Path.DirectorySeparatorChar}AI{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
                 || path.Contains($"{Path.DirectorySeparatorChar}Hub{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
@@ -2013,6 +2088,8 @@ internal static class CoreEngineTests
             && projectMilestonesText.Contains("work_items:", StringComparison.Ordinal)
             && projectMilestonesText.Contains("id: A6.1", StringComparison.Ordinal)
             && projectMilestonesText.Contains("worklist: WL-073", StringComparison.Ordinal)
+            && projectMilestonesText.Contains("status: done", StringComparison.Ordinal)
+            && projectMilestonesText.Contains("A6.1 locked canonical ownership line", StringComparison.Ordinal)
             && projectMilestonesText.Contains("id: A6.2", StringComparison.Ordinal)
             && projectMilestonesText.Contains("worklist: WL-074", StringComparison.Ordinal)
             && projectMilestonesText.Contains("id: A6.3", StringComparison.Ordinal)

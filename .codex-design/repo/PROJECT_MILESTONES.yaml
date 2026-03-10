@@ -54,6 +54,11 @@ milestones:
       - id: A6.1
         worklist: WL-073
         title: Canonicalize runtime install and BuildKit DTO ownership
+        status: done
+        evidence:
+          - A6.1 locked canonical ownership line for runtime install DTOs in `Chummer.Contracts/Content/RuntimeLockInstallContracts.cs` and `Chummer.Contracts/Content/RuntimeLockRegistryContracts.cs`.
+          - A6.1 locked canonical ownership line for BuildKit DTO families in `Chummer.Contracts/Content/ArtifactContracts.cs`, `Chummer.Contracts/Content/BuildKitApplicationContracts.cs`, and `Chummer.Contracts/Content/BuildKitRegistryContracts.cs`.
+          - Boundary regression guard `RepoBoundaryGuardsHostedContractsAndSharedContractOwnership` now asserts that BuildKit workbench projections stay in `Chummer.Presentation.Contracts` and hub compatibility/install-preview projections stay in `Chummer.RunServices.Contracts`.
       - id: A6.2
         worklist: WL-074
         title: Add normalization fixtures for runtime install, BuildKit, and runtime compatibility DTOs
@@ -61,8 +66,10 @@ milestones:
         worklist: WL-075
         title: Harden session and runtime compatibility projection seams
     notes:
-      - Runtime install, BuildKit, and session compatibility contracts still need explicit canonical ownership and normalization coverage inside engine-owned DTO families.
+      - A6.1 is complete: runtime install, BuildKit, and compatibility DTO ownership is now explicitly locked to canonical contract families, with boundary regression assertions.
+      - Runtime install, BuildKit, and session compatibility contracts still need normalization coverage inside engine-owned DTO families.
       - Completion requires deterministic compatibility projection coverage so presentation and run-services can consume canonical engine answers without duplicating reducer logic.
+      - Auditor queue-exhaustion findings from 2026-03-10 candidate IDs 3 and 4 are incorporated by milestone-mapped A0.5 and A6-A9 coverage plus explicit A6.1 evidence.
   - id: A7
     title: Structured Explain API hardening
     status: open

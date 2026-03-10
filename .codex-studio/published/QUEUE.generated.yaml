@@ -1,10 +1,29 @@
 mode: append
 items:
 - Lock Milestones A6-A9 as executable coverage in `WORKLIST.md` and the core milestone
-  registry, mapping A6.1-A6.3, A7.1-A7.3, A8.1-A8.3, and A9.1-A9.3 as explicit
-  work items for contract hardening, Structured Explain API hardening, Runtime/RulePack
+  registry, mapping A6.1-A6.3, A7.1-A7.3, A8.1-A8.3, and A9.1-A9.3 as explicit work
+  items for contract hardening, Structured Explain API hardening, Runtime/RulePack
   determinism hardening, and backend integration primitives.
 - Track temporary contract source-project deletion as Milestone `A0.5` / worklist
-  `WL-072`, covering package-only consumer cutover and final removal of
-  `Chummer.Presentation.Contracts` and `Chummer.RunServices.Contracts` after the
-  contract plane cutover.
+  `WL-072`, covering package-only consumer cutover and final removal of `Chummer.Presentation.Contracts`
+  and `Chummer.RunServices.Contracts` after the contract plane cutover.
+- Run `WL-073` (A6.1) to lock canonical ownership for runtime install, BuildKit,
+  and compatibility DTO families, then update milestone evidence in `PROJECT_MILESTONES.yaml`.
+- Run `WL-074` (A6.2) and `WL-075` (A6.3) to add normalization fixtures and deterministic
+  session/runtime compatibility projection tests for A6 closure.
+- Run `WL-076` (A7.1), `WL-077` (A7.2), and `WL-078` (A7.3) to harden structured
+  Explain disabled-reason keys, provenance/evidence envelopes, and before/after runtime
+  diff fixtures.
+- Run `WL-079` (A8.1), `WL-080` (A8.2), and `WL-081` (A8.3) to lock fingerprint,
+  compile-order, provider-binding, and dependency-resolution determinism regression coverage.
+- Run `WL-082` (A9.1), `WL-083` (A9.2), and `WL-084` (A9.3) to deliver journal/timeline,
+  validation-summary, and explain-hook composition primitives for downstream integration.
+- Run `WL-072` (A0.5) after package-only consumer cutover to remove temporary source
+  projects `Chummer.Presentation.Contracts` and `Chummer.RunServices.Contracts` from
+  the core repo.
+- Publish or append runnable backlog for Non-engine authority surfaces such as presentation
+  contracts, run-service contracts, browser infrastructure, and legacy tools still
+  live in the core repo root..
+- Publish or append runnable backlog for Temporary source-project leaks such as `Chummer.Presentation.Contracts`
+  and `Chummer.RunServices.Contracts` still need deletion after the contract plane
+  cutover..
