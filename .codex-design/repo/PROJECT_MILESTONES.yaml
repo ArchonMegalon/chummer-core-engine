@@ -40,10 +40,28 @@ milestones:
     mapped_worklist:
       - WL-072
       - WL-085
+      - WL-086
+      - WL-087
+    work_items:
+      - id: A0.5.1
+        worklist: WL-086
+        title: Keep non-engine authority surfaces represented as explicit runnable backlog
+        status: queued
+        evidence:
+          - Auditor publication candidate `44367` reports queue exhaustion while non-engine authority surfaces remain in core repo scope.
+          - Runnable backlog tracking must remain explicit for presentation contracts, run-service contracts, browser infrastructure, and legacy helper tools until package-only cutover closure.
+      - id: A0.5.2
+        worklist: WL-087
+        title: Keep temporary contract source-project deletion executable through package-only cutover acceptance
+        status: queued
+        evidence:
+          - Auditor publication candidate `44368` reports queue exhaustion while temporary source-project leaks still require safe-delete closure after contract-plane cutover.
+          - `Chummer.Presentation.Contracts` and `Chummer.RunServices.Contracts` deletion remains open until package-only consumer acceptance confirms safe closure.
     notes:
       - `WL-072` remains executable and in progress on 2026-03-10 while package-only consumer cutover acceptance remains open.
       - Temporary source-project migration/removal edits are present, but A0.5 closure is deferred until package-only consumer adoption is confirmed and safe-delete sign-off is complete.
       - Queue refresh maintenance on 2026-03-10 (`WL-085`) keeps A0.5 represented as explicit core milestone coverage so contract-reset follow-through stays visible until cutover closure.
+      - Queue refresh on 2026-03-10 appended runnable follow-through slices `WL-086` and `WL-087` from auditor candidate IDs `44367` and `44368` so uncovered non-engine scope and temporary leak deletion stay milestone-mapped instead of queue-overlay-only.
   - id: A6
     title: Contract hardening
     status: done
@@ -82,6 +100,7 @@ milestones:
       - Presentation and run-services now have fixture-backed canonical compatibility payloads for runtime install, BuildKit manifests, runtime compatibility diagnostics, and session envelope replay ordering behavior.
       - Auditor queue-exhaustion findings from 2026-03-10 candidate IDs 3 and 4 are incorporated by milestone-mapped A0.5 and A6-A9 coverage plus explicit A6.1 evidence.
       - Queue overlay refresh maintenance on 2026-03-10 (`WL-085`) confirms A6-A9 slice mapping remains runnable and explicit in both the worklist and milestone registry.
+      - Queue refresh follow-through from auditor candidate IDs `44367` and `44368` keeps remaining hardening/integration scope represented via explicit milestone/worklist mapping instead of coarse queue-only tracking.
   - id: A7
     title: Structured Explain API hardening
     status: done
