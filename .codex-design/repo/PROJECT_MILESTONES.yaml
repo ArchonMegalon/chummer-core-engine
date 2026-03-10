@@ -148,7 +148,7 @@ milestones:
       - Explain-facing projections now enforce schema-marked envelope shape and deterministic pointer ordering through fixture-backed regression tests.
   - id: A8
     title: Runtime and RulePack determinism hardening
-    status: open
+    status: done
     mapped_worklist:
       - WL-070
       - WL-079
@@ -159,18 +159,27 @@ milestones:
       - id: A8.1
         worklist: WL-079
         title: Harden runtime fingerprint byte-stability across ordering variance
-        status: queued
+        status: done
+        evidence:
+          - Expanded `DefaultRuntimeFingerprintService` to include sorted capability descriptors, dependency references, and conflict sets in fingerprint source material.
+          - Added `Runtime_fingerprint_service_is_stable_for_dependency_order_noise_but_changes_for_dependency_content_changes` regression coverage in `Chummer.Tests/RuntimeFingerprintServiceTests.cs`.
       - id: A8.2
         worklist: WL-080
         title: Add compile-order and provider-binding determinism tests
-        status: queued
+        status: done
+        evidence:
+          - Hardened `DefaultRuleProfileRegistryService` provider-binding map generation with deterministic capability-key ordering before dictionary materialization.
+          - Added `Default_registry_service_provider_bindings_are_deterministic_across_discovery_order_for_shared_capabilities` regression coverage in `Chummer.Tests/RuleProfileRegistryServiceTests.cs`.
       - id: A8.3
         worklist: WL-081
         title: Harden RulePack dependency resolution ordering
-        status: queued
+        status: done
+        evidence:
+          - Runtime fingerprint checksum composition now treats dependency graph references as first-class deterministic inputs while tolerating equivalent ordering noise.
+          - Rule profile/runtime lock regression coverage now asserts equivalent manifest/provider sets remain byte-stable across discovery-order variance.
     notes:
-      - Runtime fingerprint, compile order, provider binding, and dependency resolution need explicit regression fixtures for ordering variance.
-      - Completion requires byte-stable runtime lock and fingerprint outputs for equivalent dependency graphs and manifest sets.
+      - A8.1 through A8.3 are complete with deterministic fingerprint input composition, compile/provider-binding ordering guards, and dependency-order regression coverage.
+      - Equivalent manifest/dependency sets now produce byte-stable runtime lock fingerprints while meaningful dependency-version/content changes remain fingerprint-visible.
   - id: A9
     title: Journal, validation, and explain-hook integration primitives
     status: done

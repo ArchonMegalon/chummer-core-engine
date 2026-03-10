@@ -150,7 +150,77 @@ public class RuntimeFingerprintServiceTests
         Assert.AreNotEqual(fingerprintA, fingerprintB);
     }
 
-    private static RulePackRegistryEntry CreateRulePack(string packId, string version, string checksum)
+    [TestMethod]
+    public void Runtime_fingerprint_service_is_stable_for_dependency_order_noise_but_changes_for_dependency_content_changes()
+    {
+        DefaultRuntimeFingerprintService service = new();
+        ContentBundleDescriptor[] bundles =
+        [
+            new(
+                BundleId: "official.sr5.base",
+                RulesetId: RulesetDefaults.Sr5,
+                Version: "schema-5",
+                Title: "SR5 Base",
+                Description: "Built-in base content.",
+                AssetPaths: ["data/", "lang/"])
+        ];
+
+        RulePackRegistryEntry dependencyOrderA = CreateRulePack(
+            "house-rules",
+            "1.0.0",
+            "sha256:abc",
+            dependencies:
+            [
+                new ArtifactVersionReference("alpha-pack", "2.0.0"),
+                new ArtifactVersionReference("beta-pack", "1.0.0")
+            ]);
+        RulePackRegistryEntry dependencyOrderB = CreateRulePack(
+            "house-rules",
+            "1.0.0",
+            "sha256:abc",
+            dependencies:
+            [
+                new ArtifactVersionReference("beta-pack", "1.0.0"),
+                new ArtifactVersionReference("alpha-pack", "2.0.0")
+            ]);
+        RulePackRegistryEntry changedDependencyVersion = CreateRulePack(
+            "house-rules",
+            "1.0.0",
+            "sha256:abc",
+            dependencies:
+            [
+                new ArtifactVersionReference("alpha-pack", "3.0.0"),
+                new ArtifactVersionReference("beta-pack", "1.0.0")
+            ]);
+
+        string fingerprintA = service.ComputeResolvedRuntimeFingerprint(
+            RulesetDefaults.Sr5,
+            bundles,
+            [dependencyOrderA],
+            new Dictionary<string, string>(StringComparer.Ordinal),
+            "rulepack-v1");
+        string fingerprintB = service.ComputeResolvedRuntimeFingerprint(
+            RulesetDefaults.Sr5,
+            bundles,
+            [dependencyOrderB],
+            new Dictionary<string, string>(StringComparer.Ordinal),
+            "rulepack-v1");
+        string fingerprintChanged = service.ComputeResolvedRuntimeFingerprint(
+            RulesetDefaults.Sr5,
+            bundles,
+            [changedDependencyVersion],
+            new Dictionary<string, string>(StringComparer.Ordinal),
+            "rulepack-v1");
+
+        Assert.AreEqual(fingerprintA, fingerprintB);
+        Assert.AreNotEqual(fingerprintA, fingerprintChanged);
+    }
+
+    private static RulePackRegistryEntry CreateRulePack(
+        string packId,
+        string version,
+        string checksum,
+        IReadOnlyList<ArtifactVersionReference>? dependencies = null)
     {
         return new RulePackRegistryEntry(
             new RulePackManifest(
@@ -161,7 +231,7 @@ public class RuntimeFingerprintServiceTests
                 Description: "Runtime pack.",
                 Targets: [RulesetDefaults.Sr5],
                 EngineApiVersion: "rulepack-v1",
-                DependsOn: [],
+                DependsOn: dependencies ?? [],
                 ConflictsWith: [],
                 Visibility: ArtifactVisibilityModes.LocalOnly,
                 TrustTier: ArtifactTrustTiers.LocalOnly,
