@@ -36,12 +36,14 @@ milestones:
       - ChummerDataViewer, CrashHandler, TextblockConverter, and Translator are classified as non-engine helper surfaces and kept out of the active engine verification boundary.
   - id: A0.5
     title: Cross-repo contract reset follow-through
-    status: open
+    status: done
     mapped_worklist:
       - WL-072
+      - WL-085
     notes:
-      - `WL-072` is the executable follow-through item for deleting the temporary `Chummer.Presentation.Contracts` and `Chummer.RunServices.Contracts` source projects.
-      - Deletion is gated on package-only consumer cutover across presentation and run-services so core can stop carrying direct source-project references safely.
+      - `WL-072` completed on 2026-03-10 by deleting temporary source projects `Chummer.Presentation.Contracts` and `Chummer.RunServices.Contracts`.
+      - Canonical contract ownership now lives under `Chummer.Contracts` with no remaining direct project or solution references to the deleted temporary projects.
+      - Queue refresh maintenance on 2026-03-10 (`WL-085`) keeps A0.5 represented as explicit core milestone coverage while downstream package-only cutover verification stays observable.
   - id: A6
     title: Contract hardening
     status: done
@@ -50,6 +52,7 @@ milestones:
       - WL-073
       - WL-074
       - WL-075
+      - WL-085
     work_items:
       - id: A6.1
         worklist: WL-073
@@ -58,7 +61,7 @@ milestones:
         evidence:
           - A6.1 locked canonical ownership line for runtime install DTOs in `Chummer.Contracts/Content/RuntimeLockInstallContracts.cs` and `Chummer.Contracts/Content/RuntimeLockRegistryContracts.cs`.
           - A6.1 locked canonical ownership line for BuildKit DTO families in `Chummer.Contracts/Content/ArtifactContracts.cs`, `Chummer.Contracts/Content/BuildKitApplicationContracts.cs`, and `Chummer.Contracts/Content/BuildKitRegistryContracts.cs`.
-          - Boundary regression guard `RepoBoundaryGuardsHostedContractsAndSharedContractOwnership` now asserts that BuildKit workbench projections stay in `Chummer.Presentation.Contracts` and hub compatibility/install-preview projections stay in `Chummer.RunServices.Contracts`.
+          - Boundary regression guard `RepoBoundaryGuardsHostedContractsAndSharedContractOwnership` now asserts canonical contract ownership under `Chummer.Contracts` and verifies the deleted temporary project roots are absent.
       - id: A6.2
         worklist: WL-074
         title: Add normalization fixtures for runtime install, BuildKit, and runtime compatibility DTOs
@@ -78,6 +81,7 @@ milestones:
       - A6.2 and A6.3 are complete with canonical normalization fixtures and deterministic compatibility projection regression coverage.
       - Presentation and run-services now have fixture-backed canonical compatibility payloads for runtime install, BuildKit manifests, runtime compatibility diagnostics, and session envelope replay ordering behavior.
       - Auditor queue-exhaustion findings from 2026-03-10 candidate IDs 3 and 4 are incorporated by milestone-mapped A0.5 and A6-A9 coverage plus explicit A6.1 evidence.
+      - Queue overlay refresh maintenance on 2026-03-10 (`WL-085`) confirms A6-A9 slice mapping remains runnable and explicit in both the worklist and milestone registry.
   - id: A7
     title: Structured Explain API hardening
     status: done
@@ -121,16 +125,20 @@ milestones:
       - WL-079
       - WL-080
       - WL-081
+      - WL-085
     work_items:
       - id: A8.1
         worklist: WL-079
         title: Harden runtime fingerprint byte-stability across ordering variance
+        status: queued
       - id: A8.2
         worklist: WL-080
         title: Add compile-order and provider-binding determinism tests
+        status: queued
       - id: A8.3
         worklist: WL-081
         title: Harden RulePack dependency resolution ordering
+        status: queued
     notes:
       - Runtime fingerprint, compile order, provider binding, and dependency resolution need explicit regression fixtures for ordering variance.
       - Completion requires byte-stable runtime lock and fingerprint outputs for equivalent dependency graphs and manifest sets.
@@ -142,6 +150,7 @@ milestones:
       - WL-082
       - WL-083
       - WL-084
+      - WL-085
     work_items:
       - id: A9.1
         worklist: WL-082
