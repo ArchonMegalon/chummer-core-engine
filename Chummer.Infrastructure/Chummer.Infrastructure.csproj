@@ -7,11 +7,10 @@
   <ItemGroup>
     <ProjectReference Include="..\Chummer.Application\Chummer.Application.csproj" />
     <ProjectReference Include="..\Chummer.Contracts\Chummer.Contracts.csproj" />
-    <ProjectReference Include="..\Chummer.Presentation.Contracts\Chummer.Presentation.Contracts.csproj" />
-    <ProjectReference Include="..\Chummer.RunServices.Contracts\Chummer.RunServices.Contracts.csproj" />
     <ProjectReference Include="..\Chummer.Rulesets.Hosting\Chummer.Rulesets.Hosting.csproj" />
     <ProjectReference Include="..\Chummer.Rulesets.Sr5\Chummer.Rulesets.Sr5.csproj" />
     <ProjectReference Include="..\Chummer.Rulesets.Sr6\Chummer.Rulesets.Sr6.csproj" />
+    <ProjectReference Include="..\Chummer.Run.Contracts\Chummer.Run.Contracts.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Compile Remove="DependencyInjection/ServiceCollectionExtensions.cs" />

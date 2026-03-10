@@ -168,12 +168,11 @@
     <ProjectReference Include="..\Chummer.Core\Chummer.Core.csproj" />
     <ProjectReference Include="..\Chummer.Infrastructure.Browser\Chummer.Infrastructure.Browser.csproj" />
     <ProjectReference Include="..\Chummer.Infrastructure\Chummer.Infrastructure.csproj" />
-    <ProjectReference Include="..\Chummer.Presentation.Contracts\Chummer.Presentation.Contracts.csproj" />
-    <ProjectReference Include="..\Chummer.RunServices.Contracts\Chummer.RunServices.Contracts.csproj" />
     <ProjectReference Include="..\Chummer.Rulesets.Hosting\Chummer.Rulesets.Hosting.csproj" />
     <ProjectReference Include="..\Chummer.Rulesets.Sr4\Chummer.Rulesets.Sr4.csproj" />
     <ProjectReference Include="..\Chummer.Rulesets.Sr5\Chummer.Rulesets.Sr5.csproj" />
     <ProjectReference Include="..\Chummer.Rulesets.Sr6\Chummer.Rulesets.Sr6.csproj" />
+    <ProjectReference Include="..\Chummer.Run.Contracts\Chummer.Run.Contracts.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia.Headless" Version="11.3.7" />

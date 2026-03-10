@@ -2699,29 +2699,14 @@ internal static class CoreEngineTests
     {
         string repositoryRoot = GetRepositoryRoot();
         string coreContractsRoot = Path.Combine(repositoryRoot, "Chummer.Contracts");
+        string runContractsRoot = Path.Combine(repositoryRoot, "Chummer.Run.Contracts");
         string presentationContractsRoot = Path.Combine(repositoryRoot, "Chummer.Presentation.Contracts");
         string runServicesContractsRoot = Path.Combine(repositoryRoot, "Chummer.RunServices.Contracts");
-        string[] hostedConcernDirectories =
-        [
-            Path.Combine(coreContractsRoot, "AI"),
-            Path.Combine(coreContractsRoot, "Hub")
-        ];
-
-        foreach (string hostedConcernDirectory in hostedConcernDirectories)
-        {
-            if (!Directory.Exists(hostedConcernDirectory))
-            {
-                continue;
-            }
-
-            string[] leakedSources = Directory.EnumerateFiles(hostedConcernDirectory, "*.cs", SearchOption.AllDirectories).ToArray();
-            AssertEx.True(
-                leakedSources.Length == 0,
-                $"Hosted-service contract sources leaked into engine-owned contracts: {string.Join(", ", leakedSources.Select(path => Path.GetRelativePath(repositoryRoot, path)))}.");
-        }
+        AssertEx.True(!Directory.Exists(presentationContractsRoot), "Temporary project root 'Chummer.Presentation.Contracts' should be deleted.");
+        AssertEx.True(!Directory.Exists(runServicesContractsRoot), "Temporary project root 'Chummer.RunServices.Contracts' should be deleted.");
 
         string corePresentationContractsDirectory = Path.Combine(coreContractsRoot, "Presentation");
-        string[] coreOwnedSharedContracts =
+        string[] canonicalPresentationContracts =
         [
             "AppCommandCatalogResponse.cs",
             "AppCommandDefinition.cs",
@@ -2729,31 +2714,7 @@ internal static class CoreEngineTests
             "NavigationTabCatalogResponse.cs",
             "NavigationTabDefinition.cs",
             "WorkflowSurfaceContracts.cs",
-            "WorkspaceSurfaceActionDefinition.cs"
-        ];
-        if (Directory.Exists(corePresentationContractsDirectory))
-        {
-            string[] leakedPresentationContracts = Directory.EnumerateFiles(corePresentationContractsDirectory, "*.cs", SearchOption.TopDirectoryOnly)
-                .Where(path => !coreOwnedSharedContracts.Contains(Path.GetFileName(path), StringComparer.Ordinal))
-                .ToArray();
-            AssertEx.True(
-                leakedPresentationContracts.Length == 0,
-                $"Presentation contract sources leaked into Chummer.Contracts: {string.Join(", ", leakedPresentationContracts.Select(path => Path.GetRelativePath(repositoryRoot, path)))}.");
-        }
-
-        foreach (string fileName in coreOwnedSharedContracts)
-        {
-            string canonicalContractPath = Path.Combine(coreContractsRoot, "Presentation", fileName);
-            AssertEx.True(
-                File.Exists(canonicalContractPath),
-                $"Core-owned contract '{fileName}' should live under Chummer.Contracts.");
-            AssertEx.True(
-                !File.Exists(Path.Combine(presentationContractsRoot, "Presentation", fileName)),
-                $"Core-owned contract '{fileName}' must not remain under Chummer.Presentation.Contracts.");
-        }
-
-        string[] presentationOwnedContracts =
-        [
+            "WorkspaceSurfaceActionDefinition.cs",
             "BrowseQueryContracts.cs",
             "BrowseWorkspaceContracts.cs",
             "BuildKitWorkbenchContracts.cs",
@@ -2763,15 +2724,61 @@ internal static class CoreEngineTests
             "ShellBootstrapContracts.cs"
         ];
 
-        foreach (string fileName in presentationOwnedContracts)
+        foreach (string fileName in canonicalPresentationContracts)
         {
-            string movedContractPath = Path.Combine(presentationContractsRoot, "Presentation", fileName);
             AssertEx.True(
-                File.Exists(movedContractPath),
-                $"Presentation-owned contract '{fileName}' should live under Chummer.Presentation.Contracts.");
+                File.Exists(Path.Combine(corePresentationContractsDirectory, fileName)),
+                $"Canonical presentation contract '{fileName}' should live under Chummer.Contracts/Presentation.");
+        }
+
+        string coreAiContractsDirectory = Path.Combine(runContractsRoot, "AI");
+        string[] canonicalAiContracts =
+        [
+            "AiActionPreviewContracts.cs",
+            "AiApprovalContracts.cs",
+            "AiBuildIdeaCatalogContracts.cs",
+            "AiCoachLaunchContracts.cs",
+            "AiConversationCatalogContracts.cs",
+            "AiDigestContracts.cs",
+            "AiEvaluationContracts.cs",
+            "AiExplainContracts.cs",
+            "AiGatewayContracts.cs",
+            "AiHistoryDraftContracts.cs",
+            "AiHubProjectSearchContracts.cs",
+            "AiMediaAssetContracts.cs",
+            "AiMediaContracts.cs",
+            "AiMediaQueueContracts.cs",
+            "AiPortraitPromptContracts.cs",
+            "AiPromptRegistryContracts.cs",
+            "AiRecapDraftContracts.cs",
+            "AiTranscriptContracts.cs",
+            "BuildIdeaCardContracts.cs"
+        ];
+
+        foreach (string fileName in canonicalAiContracts)
+        {
             AssertEx.True(
-                !File.Exists(Path.Combine(corePresentationContractsDirectory, fileName)),
-                $"Presentation-owned contract '{fileName}' must not remain under Chummer.Contracts.");
+                File.Exists(Path.Combine(coreAiContractsDirectory, fileName)),
+                $"Canonical AI contract '{fileName}' should live under Chummer.Run.Contracts/AI.");
+        }
+
+        string coreHubContractsDirectory = Path.Combine(runContractsRoot, "Hub");
+        string[] canonicalHubContracts =
+        [
+            "HubCatalogContracts.cs",
+            "HubProjectCompatibilityContracts.cs",
+            "HubProjectDetailContracts.cs",
+            "HubProjectInstallPreviewContracts.cs",
+            "HubPublicationContracts.cs",
+            "HubPublisherContracts.cs",
+            "HubReviewContracts.cs"
+        ];
+
+        foreach (string fileName in canonicalHubContracts)
+        {
+            AssertEx.True(
+                File.Exists(Path.Combine(coreHubContractsDirectory, fileName)),
+                $"Canonical hub contract '{fileName}' should live under Chummer.Run.Contracts/Hub.");
         }
 
         string coreContentContractsDirectory = Path.Combine(coreContractsRoot, "Content");
@@ -2790,15 +2797,6 @@ internal static class CoreEngineTests
             AssertEx.True(
                 File.Exists(canonicalPath),
                 $"A6.1 canonical contract '{fileName}' should live under Chummer.Contracts/Content.");
-            AssertEx.True(
-                !File.Exists(Path.Combine(presentationContractsRoot, "Presentation", fileName)),
-                $"A6.1 canonical contract '{fileName}' must not be owned by Chummer.Presentation.Contracts.");
-            AssertEx.True(
-                !File.Exists(Path.Combine(runServicesContractsRoot, "Hub", fileName)),
-                $"A6.1 canonical contract '{fileName}' must not be owned by Chummer.RunServices.Contracts/Hub.");
-            AssertEx.True(
-                !File.Exists(Path.Combine(runServicesContractsRoot, "AI", fileName)),
-                $"A6.1 canonical contract '{fileName}' must not be owned by Chummer.RunServices.Contracts/AI.");
         }
 
         string runtimeLockInstallContractsText = File.ReadAllText(Path.Combine(coreContentContractsDirectory, "RuntimeLockInstallContracts.cs"));
@@ -2825,20 +2823,20 @@ internal static class CoreEngineTests
             && buildKitManifestContractsText.Contains("BuildKitRuntimeRequirement", StringComparison.Ordinal),
             "BuildKit manifest and runtime requirement DTOs should remain engine-owned contracts.");
 
-        string buildKitWorkbenchContractsPath = Path.Combine(presentationContractsRoot, "Presentation", "BuildKitWorkbenchContracts.cs");
+        string buildKitWorkbenchContractsPath = Path.Combine(corePresentationContractsDirectory, "BuildKitWorkbenchContracts.cs");
         AssertEx.True(
             File.Exists(buildKitWorkbenchContractsPath),
-            "Presentation projections for BuildKit workbench should remain presentation-owned contracts.");
+            "BuildKit workbench projection contracts should remain canonical under Chummer.Contracts/Presentation.");
 
-        string hubCompatibilityContractsPath = Path.Combine(runServicesContractsRoot, "Hub", "HubProjectCompatibilityContracts.cs");
+        string hubCompatibilityContractsPath = Path.Combine(coreHubContractsDirectory, "HubProjectCompatibilityContracts.cs");
         AssertEx.True(
             File.Exists(hubCompatibilityContractsPath),
-            "Hub compatibility matrix projections should remain run-services-owned contracts.");
+            "Hub compatibility matrix projections should remain canonical under Chummer.Run.Contracts/Hub.");
 
-        string hubInstallPreviewContractsPath = Path.Combine(runServicesContractsRoot, "Hub", "HubProjectInstallPreviewContracts.cs");
+        string hubInstallPreviewContractsPath = Path.Combine(coreHubContractsDirectory, "HubProjectInstallPreviewContracts.cs");
         AssertEx.True(
             File.Exists(hubInstallPreviewContractsPath),
-            "Hub install preview projections should remain run-services-owned contracts.");
+            "Hub install preview projections should remain canonical under Chummer.Run.Contracts/Hub.");
 
         string coreContentContractsText = string.Join(
             "\n",
@@ -2849,9 +2847,13 @@ internal static class CoreEngineTests
             && !coreContentContractsText.Contains("HubProjectInstallPreviewReceipt", StringComparison.Ordinal),
             "Presentation and run-services compatibility projection DTOs must not leak into engine-owned content contracts.");
 
-        string[] hostedContractSources = Directory.EnumerateFiles(runServicesContractsRoot, "*.cs", SearchOption.AllDirectories)
+        string[] hostedContractSources = Directory
+            .EnumerateFiles(runContractsRoot, "*.cs", SearchOption.AllDirectories)
             .Where(path => path.Contains($"{Path.DirectorySeparatorChar}AI{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
                 || path.Contains($"{Path.DirectorySeparatorChar}Hub{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            .Concat(
+                Directory.EnumerateFiles(coreContractsRoot, "*.cs", SearchOption.AllDirectories)
+                    .Where(path => path.Contains($"{Path.DirectorySeparatorChar}Presentation{Path.DirectorySeparatorChar}", StringComparison.Ordinal)))
             .ToArray();
 
         foreach (string hostedContractSource in hostedContractSources)
@@ -2864,13 +2866,11 @@ internal static class CoreEngineTests
 
             AssertEx.True(
                 duplicates.Length == 0,
-                $"Hosted contract '{fileName}' was duplicated outside run-services ownership: {string.Join(", ", duplicates.Select(path => Path.GetRelativePath(repositoryRoot, path)))}.");
+                $"Canonical contract '{fileName}' was duplicated outside Chummer.Contracts/Chummer.Run.Contracts ownership: {string.Join(", ", duplicates.Select(path => Path.GetRelativePath(repositoryRoot, path)))}.");
         }
 
-        string runServicesContractsProjectPath = Path.Combine(runServicesContractsRoot, "Chummer.RunServices.Contracts.csproj");
         string[] projectPaths = Directory.EnumerateFiles(repositoryRoot, "*.csproj", SearchOption.AllDirectories)
             .Where(path => !IsGeneratedOrBuildArtifact(path))
-            .Where(path => !string.Equals(path, runServicesContractsProjectPath, StringComparison.Ordinal))
             .ToArray();
 
         foreach (string projectPath in projectPaths)
@@ -2881,13 +2881,13 @@ internal static class CoreEngineTests
                 && !projectText.Contains(@"../Chummer.RunServices.Contracts/AI/", StringComparison.Ordinal)
                 && !projectText.Contains(@"..\Chummer.RunServices.Contracts\Hub\", StringComparison.Ordinal)
                 && !projectText.Contains(@"../Chummer.RunServices.Contracts/Hub/", StringComparison.Ordinal),
-                $"Project '{Path.GetRelativePath(repositoryRoot, projectPath)}' must consume hosted contracts via project/package ownership, not by compiling AI/Hub source files directly.");
+                $"Project '{Path.GetRelativePath(repositoryRoot, projectPath)}' must not depend on deleted temporary contract project paths.");
             AssertEx.True(
-                !projectText.Contains(@"..\Chummer.Contracts\AI\", StringComparison.Ordinal)
-                && !projectText.Contains(@"../Chummer.Contracts/AI/", StringComparison.Ordinal)
-                && !projectText.Contains(@"..\Chummer.Contracts\Hub\", StringComparison.Ordinal)
-                && !projectText.Contains(@"../Chummer.Contracts/Hub/", StringComparison.Ordinal),
-                $"Project '{Path.GetRelativePath(repositoryRoot, projectPath)}' reintroduced hosted AI/Hub contract source paths under engine ownership.");
+                !projectText.Contains(@"..\Chummer.Run.Contracts\AI\", StringComparison.Ordinal)
+                && !projectText.Contains(@"../Chummer.Run.Contracts/AI/", StringComparison.Ordinal)
+                && !projectText.Contains(@"..\Chummer.Run.Contracts\Hub\", StringComparison.Ordinal)
+                && !projectText.Contains(@"../Chummer.Run.Contracts/Hub/", StringComparison.Ordinal),
+                $"Project '{Path.GetRelativePath(repositoryRoot, projectPath)}' should consume canonical contracts via assembly reference, not by compiling individual AI/Hub source files directly.");
         }
     }
 
