@@ -132,5 +132,67 @@
         }
       ]
     }
-  ]
+  ],
+  "provenanceEnvelope": {
+    "schema": "explain.provenance.v1",
+    "provenance": {
+      "runtimeFingerprint": "sha256:golden-runtime",
+      "rulesetId": "sr5",
+      "engineApiVersion": "engine-v2",
+      "catalogKind": "published",
+      "runtimeTitle": "Official SR5 Runtime",
+      "profileId": "official.sr5.ops",
+      "profileTitle": "Operations Profile",
+      "providerId": "combat-pack/derive.initiative",
+      "packId": "combat-pack",
+      "rulePacks": [
+        "combat-pack",
+        "quality-pack"
+      ],
+      "providerBindings": {
+        "derive.stat": "combat-pack/derive.initiative",
+        "session.quick-actions": "combat-pack/session.quickaction"
+      }
+    },
+    "capabilityId": "derive.stat",
+    "providerId": "combat-pack/derive.initiative",
+    "packId": "combat-pack"
+  },
+  "evidenceEnvelope": {
+    "schema": "explain.evidence.v1",
+    "pointers": [
+      {
+        "kind": "runtime-lock",
+        "pointer": "sha256:golden-runtime",
+        "labelKey": "ruleset.explain.evidence.runtime-lock",
+        "labelParameters": [
+          {
+            "name": "runtimeFingerprint",
+            "value": {
+              "kind": "string",
+              "stringValue": "sha256:golden-runtime"
+            }
+          }
+        ]
+      },
+      {
+        "kind": "rule-profile",
+        "pointer": "official.sr5.ops",
+        "labelKey": "ruleset.explain.evidence.rule-profile",
+        "labelParameters": [
+          {
+            "name": "profileId",
+            "value": {
+              "kind": "string",
+              "stringValue": "official.sr5.ops"
+            }
+          }
+        ]
+      }
+    ],
+    "capabilityId": "derive.stat",
+    "providerId": "combat-pack/derive.initiative",
+    "packId": "combat-pack",
+    "deterministic": true
+  }
 }

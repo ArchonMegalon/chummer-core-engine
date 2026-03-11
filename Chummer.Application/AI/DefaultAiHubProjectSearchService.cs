@@ -60,6 +60,8 @@ public sealed class DefaultAiHubProjectSearchService : IAiHubProjectSearchServic
                     action.Label,
                     action.Kind,
                     action.Enabled,
+                    action.DisabledReasonKey,
+                    action.DisabledReasonParameters,
                     action.DisabledReason))
                 .ToArray());
     }

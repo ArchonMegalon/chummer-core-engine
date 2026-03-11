@@ -75,6 +75,8 @@ public sealed record SessionQuickActionDescriptor(
     string CapabilityId,
     bool IsPinned = false,
     bool IsEnabled = true,
+    string? DisabledReasonKey = null,
+    IReadOnlyList<RulesetExplainParameter>? DisabledReasonParameters = null,
     string? DisabledReason = null,
     string? ExplainEntryId = null);
 
@@ -119,3 +121,21 @@ public sealed record SessionDashboardProjection(
     IReadOnlyList<SessionQuickActionGroup> QuickActionGroups,
     IReadOnlyList<SessionExplainEntry> ExplainEntries,
     SessionSyncBanner? SyncBanner = null);
+
+public static class SessionProjectionContractLocalization
+{
+    public static string? ResolveDisabledReasonKey(SessionQuickActionDescriptor descriptor)
+    {
+        ArgumentNullException.ThrowIfNull(descriptor);
+
+        return string.IsNullOrWhiteSpace(descriptor.DisabledReasonKey)
+            ? descriptor.DisabledReason
+            : descriptor.DisabledReasonKey;
+    }
+
+    public static IReadOnlyList<RulesetExplainParameter> ResolveDisabledReasonParameters(SessionQuickActionDescriptor descriptor)
+    {
+        ArgumentNullException.ThrowIfNull(descriptor);
+        return descriptor.DisabledReasonParameters ?? [];
+    }
+}

@@ -55,6 +55,46 @@ public sealed class DefaultRuntimeFingerprintService : IRuntimeFingerprintServic
                 .Append(manifest.Visibility)
                 .Append('\n');
 
+            foreach (RulePackCapabilityDescriptor capability in manifest.Capabilities
+                         .OrderBy(candidate => candidate.CapabilityId, StringComparer.Ordinal)
+                         .ThenBy(candidate => candidate.AssetKind, StringComparer.Ordinal)
+                         .ThenBy(candidate => candidate.AssetMode, StringComparer.Ordinal))
+            {
+                fingerprintSource.Append("capability=")
+                    .Append(capability.CapabilityId)
+                    .Append('|')
+                    .Append(capability.AssetKind)
+                    .Append('|')
+                    .Append(capability.AssetMode)
+                    .Append('|')
+                    .Append(capability.Explainable ? "1" : "0")
+                    .Append('|')
+                    .Append(capability.SessionSafe ? "1" : "0")
+                    .Append('\n');
+            }
+
+            foreach (ArtifactVersionReference dependency in manifest.DependsOn
+                         .OrderBy(candidate => candidate.Id, StringComparer.Ordinal)
+                         .ThenBy(candidate => candidate.Version, StringComparer.Ordinal))
+            {
+                fingerprintSource.Append("depends=")
+                    .Append(dependency.Id)
+                    .Append('@')
+                    .Append(dependency.Version)
+                    .Append('\n');
+            }
+
+            foreach (ArtifactVersionReference conflict in manifest.ConflictsWith
+                         .OrderBy(candidate => candidate.Id, StringComparer.Ordinal)
+                         .ThenBy(candidate => candidate.Version, StringComparer.Ordinal))
+            {
+                fingerprintSource.Append("conflict=")
+                    .Append(conflict.Id)
+                    .Append('@')
+                    .Append(conflict.Version)
+                    .Append('\n');
+            }
+
             foreach (RulePackAssetDescriptor asset in manifest.Assets
                          .OrderBy(candidate => candidate.Kind, StringComparer.Ordinal)
                          .ThenBy(candidate => candidate.Mode, StringComparer.Ordinal)

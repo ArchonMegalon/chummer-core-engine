@@ -279,6 +279,7 @@ public sealed class DefaultRuleProfileRegistryService : IRuleProfileRegistryServ
                     ProviderId = $"{rulePack.Manifest.PackId}/{capability.CapabilityId}"
                 }))
             .GroupBy(binding => binding.CapabilityId, StringComparer.Ordinal)
+            .OrderBy(group => group.Key, StringComparer.Ordinal)
             .ToDictionary(
                 group => group.Key,
                 group => group.Last().ProviderId,

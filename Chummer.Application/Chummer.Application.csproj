@@ -6,7 +6,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Chummer.Contracts\Chummer.Contracts.csproj" />
-    <ProjectReference Include="..\Chummer.Presentation.Contracts\Chummer.Presentation.Contracts.csproj" />
-    <ProjectReference Include="..\Chummer.RunServices.Contracts\Chummer.RunServices.Contracts.csproj" />
+    <ProjectReference Include="..\Chummer.Run.Contracts\Chummer.Run.Contracts.csproj" />
   </ItemGroup>
 </Project>

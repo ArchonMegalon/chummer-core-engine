@@ -144,6 +144,33 @@ public class RuleProfileRegistryServiceTests
     }
 
     [TestMethod]
+    public void Default_registry_service_provider_bindings_are_deterministic_across_discovery_order_for_shared_capabilities()
+    {
+        DefaultRuleProfileRegistryService serviceA = CreateServiceWithRulePacks(
+        [
+            CreateRulePack("zeta-pack", "1.0.0", RulePackCapabilityIds.ValidateCharacter, RulePackCapabilityIds.DeriveInitiative),
+            CreateRulePack("alpha-pack", "1.0.0", RulePackCapabilityIds.ValidateCharacter, RulePackCapabilityIds.ContentCatalog)
+        ]);
+        DefaultRuleProfileRegistryService serviceB = CreateServiceWithRulePacks(
+        [
+            CreateRulePack("alpha-pack", "1.0.0", RulePackCapabilityIds.ContentCatalog, RulePackCapabilityIds.ValidateCharacter),
+            CreateRulePack("zeta-pack", "1.0.0", RulePackCapabilityIds.DeriveInitiative, RulePackCapabilityIds.ValidateCharacter)
+        ]);
+
+        RuleProfileRegistryEntry overlayA = serviceA.Get(OwnerScope.LocalSingleUser, "local.sr5.current-overlays", RulesetDefaults.Sr5)!;
+        RuleProfileRegistryEntry overlayB = serviceB.Get(OwnerScope.LocalSingleUser, "local.sr5.current-overlays", RulesetDefaults.Sr5)!;
+
+        string validateBindingA = overlayA.Manifest.RuntimeLock.ProviderBindings[RulePackCapabilityIds.ValidateCharacter];
+        string validateBindingB = overlayB.Manifest.RuntimeLock.ProviderBindings[RulePackCapabilityIds.ValidateCharacter];
+
+        CollectionAssert.AreEqual(
+            overlayA.Manifest.RuntimeLock.ProviderBindings.Select(static binding => $"{binding.Key}={binding.Value}").ToArray(),
+            overlayB.Manifest.RuntimeLock.ProviderBindings.Select(static binding => $"{binding.Key}={binding.Value}").ToArray());
+        Assert.AreEqual("zeta-pack/validate.character", validateBindingA);
+        Assert.AreEqual(validateBindingA, validateBindingB);
+    }
+
+    [TestMethod]
     public void Default_registry_service_prefers_owner_backed_profile_publication_metadata_when_present()
     {
         DefaultRuleProfileRegistryService service = new(

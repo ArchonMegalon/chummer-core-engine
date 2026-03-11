@@ -9,5 +9,7 @@ public record ExplainTraceDto(
     IReadOnlyList<RulesetExplainParameter> SummaryParameters,
     IReadOnlyList<TraceStepDto> Steps,
     ExplainProvenanceDto? Provenance = null,
-    IReadOnlyList<ExplainEvidencePointerDto>? Evidence = null
+    IReadOnlyList<ExplainEvidencePointerDto>? Evidence = null,
+    ExplainProvenanceEnvelopeDto? ProvenanceEnvelope = null,
+    ExplainEvidenceEnvelopeDto? EvidenceEnvelope = null
 );

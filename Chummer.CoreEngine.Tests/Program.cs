@@ -1,8 +1,11 @@
 using Chummer.Application.AI;
 using Chummer.Application.BuildLab;
 using Chummer.Application.Content;
+using Chummer.Application.Explain;
+using Chummer.Application.Hub;
 using Chummer.Application.Journal;
 using Chummer.Application.Session;
+using Chummer.Application.Validation;
 using Chummer.Contracts;
 using Chummer.Contracts.AI;
 using Chummer.Contracts.BuildLab;
@@ -13,6 +16,7 @@ using Chummer.Contracts.Journal;
 using Chummer.Contracts.Owners;
 using Chummer.Contracts.Rulesets;
 using Chummer.Contracts.Session;
+using Chummer.Contracts.Validation;
 using Chummer.Rulesets.Hosting;
 using Chummer.Rulesets.Sr4;
 using Chummer.Rulesets.Sr5;
@@ -31,6 +35,7 @@ internal static class CoreEngineTests
             CapabilityDescriptorsEmitLocalizationKeys();
             ExperimentalRulesetsEmitDiagnosticMessageKeys();
             SessionReplayDiagnosticsStayKeyed();
+            SelectionAndFilterDisabledReasonsStayKeyed();
             SessionEventCompatibilityContractsRoundTripToCanonicalEnvelope();
             RuntimeInspectorProjectsCapabilityAndCompatibilityKeys();
             RuntimeInspectorProjectionIsDeterministicAcrossPackAndBindingOrder();
@@ -38,11 +43,14 @@ internal static class CoreEngineTests
             AiExplainProjectionEmitsStructuredProvenance();
             AiExplainProjectionPrefersTraceContextOverMismatchedSessionContext();
             ContractGoldenJsonFixturesStayStable();
+            ContractNormalizationFixturesStayStable();
             RepoBoundaryGuardsHostedContractsAndSharedContractOwnership();
             ActiveCoreEngineSolutionStaysPurified();
             HardeningBacklogStaysMilestoneMapped();
             LocalizationFallbackHelpersNormalizeLegacyContracts();
+            SessionAndRuntimeCompatibilityProjectionsStayDeterministic();
             JournalProjectionIsDeterministicAndValidated();
+            ValidationSummaryAndExplainHookCompositionStayDeterministic();
             BuildLabOutputsAreDeterministicAndLocalized();
             ContentInstallPreviewsEmitLocalizationKeys();
             Console.WriteLine("core-engine-tests: ok");
@@ -157,6 +165,83 @@ internal static class CoreEngineTests
         AssertEx.True(
             projection.Diagnostics.Any(diagnostic => string.Equals(diagnostic.MessageKey, "session.replay.tracker.missing-id", StringComparison.Ordinal)),
             "Session replay should keep missing tracker identifiers keyed.");
+    }
+
+    private static void SelectionAndFilterDisabledReasonsStayKeyed()
+    {
+        DisabledReasonPayload disabledReason = new(
+            ReasonKey: "ruleset.disabled.availability",
+            ReasonParameters:
+            [
+                new RulesetExplainParameter("required", RulesetCapabilityBridge.FromObject(12)),
+                new RulesetExplainParameter("actual", RulesetCapabilityBridge.FromObject(8))
+            ]);
+        FilterChoicesOutput filterOutput = new(
+            EnabledIds: ["item-a"],
+            DisabledReasons: new Dictionary<string, DisabledReasonPayload>(StringComparer.Ordinal)
+            {
+                ["item-b"] = disabledReason
+            });
+        SessionQuickActionOutput quickActionOutput = new(
+            Allowed: false,
+            DisabledReason: disabledReason,
+            Diagnostics: []);
+        SessionQuickActionDescriptor sessionAction = new(
+            ActionId: "heal",
+            Label: "Quick Heal",
+            CapabilityId: RulePackCapabilityIds.SessionQuickActions,
+            IsEnabled: false,
+            DisabledReasonKey: "session.quick-action.cooldown",
+            DisabledReasonParameters:
+            [
+                new RulesetExplainParameter("remaining", RulesetCapabilityBridge.FromObject(2))
+            ]);
+        HubProjectAction hubAction = new(
+            ActionId: "apply",
+            Label: "Apply",
+            Kind: HubProjectActionKinds.Apply,
+            Enabled: false,
+            DisabledReasonKey: "hub.action.blocked.missing-runtime",
+            DisabledReasonParameters:
+            [
+                new RulesetExplainParameter("runtimeFingerprint", RulesetCapabilityBridge.FromObject("sha256:missing"))
+            ]);
+        AiHubProjectActionProjection aiAction = new(
+            ActionId: "apply",
+            Label: "Apply",
+            Kind: HubProjectActionKinds.Apply,
+            Enabled: false,
+            DisabledReasonKey: "hub.action.blocked.missing-runtime",
+            DisabledReasonParameters:
+            [
+                new RulesetExplainParameter("runtimeFingerprint", RulesetCapabilityBridge.FromObject("sha256:missing"))
+            ]);
+
+        AssertEx.Equal(
+            "ruleset.disabled.availability",
+            DisabledReasonPayloadLocalization.ResolveReasonKey(filterOutput.DisabledReasons["item-b"]),
+            "Filter choice disabled reasons should remain keyed.");
+        AssertEx.Equal(
+            "ruleset.disabled.availability",
+            DisabledReasonPayloadLocalization.ResolveReasonKey(quickActionOutput.DisabledReason!),
+            "Session quick-action capability outputs should remain keyed.");
+        AssertEx.Equal(
+            "session.quick-action.cooldown",
+            SessionProjectionContractLocalization.ResolveDisabledReasonKey(sessionAction),
+            "Session quick-action projections should resolve disabled reason keys.");
+        AssertEx.Equal(
+            "hub.action.blocked.missing-runtime",
+            HubProjectDetailContractLocalization.ResolveDisabledReasonKey(hubAction),
+            "Hub action projections should resolve disabled reason keys.");
+        AssertEx.Equal(
+            "hub.action.blocked.missing-runtime",
+            AiHubProjectSearchContractLocalization.ResolveDisabledReasonKey(aiAction),
+            "AI hub action projections should resolve disabled reason keys.");
+        AssertEx.True(
+            SessionProjectionContractLocalization.ResolveDisabledReasonParameters(sessionAction).Count == 1
+            && HubProjectDetailContractLocalization.ResolveDisabledReasonParameters(hubAction).Count == 1
+            && AiHubProjectSearchContractLocalization.ResolveDisabledReasonParameters(aiAction).Count == 1,
+            "Disabled reason key payloads should preserve parameter envelopes across selection/filter projections.");
     }
 
     private static void SessionEventCompatibilityContractsRoundTripToCanonicalEnvelope()
@@ -482,11 +567,30 @@ internal static class CoreEngineTests
             "combat-pack",
             projection.Provenance.PackId,
             "Explain provenance should resolve the bound RulePack id.");
+        AssertEx.NotNull(
+            projection.ProvenanceEnvelope,
+            "Explain projections should emit structured provenance envelopes.");
+        AssertEx.Equal(
+            AiExplainEnvelopeSchemas.ProvenanceV1,
+            projection.ProvenanceEnvelope!.Schema,
+            "Explain provenance envelopes should publish the canonical schema marker.");
+        AssertEx.NotNull(
+            projection.EvidenceEnvelope,
+            "Explain projections should emit structured evidence envelopes.");
+        AssertEx.Equal(
+            AiExplainEnvelopeSchemas.EvidenceV1,
+            projection.EvidenceEnvelope!.Schema,
+            "Explain evidence envelopes should publish the canonical schema marker.");
         AssertEx.True(
             projection.Evidence is { Count: >= 5 },
             "Explain projections should emit machine-readable evidence pointers.");
+        IReadOnlyList<AiExplainEvidencePointerProjection> explainEvidence = projection.Evidence!;
+        AiExplainEvidenceEnvelopeProjection evidenceEnvelope = projection.EvidenceEnvelope!;
         AssertEx.True(
-            projection.Evidence!.Any(pointer =>
+            evidenceEnvelope.Pointers.Count == explainEvidence.Count,
+            "Explain evidence envelopes should preserve the deterministic evidence pointer set.");
+        AssertEx.True(
+            explainEvidence.Any(pointer =>
                 string.Equals(pointer.Kind, RulesetEvidencePointerKinds.RuleReference, StringComparison.Ordinal)
                 && string.Equals(pointer.Pointer, "sr5.combat.initiative", StringComparison.Ordinal)),
             "Explain projections should surface rule-reference evidence from the underlying trace.");
@@ -538,6 +642,12 @@ internal static class CoreEngineTests
             "combat-pack",
             projection.PackId,
             "Explain projections should fall back to trace pack ids when provider bindings cannot resolve a pack.");
+        AssertEx.NotNull(
+            projection.ProvenanceEnvelope,
+            "Explain projections should preserve provenance envelopes when runtime/session contexts diverge.");
+        AssertEx.NotNull(
+            projection.EvidenceEnvelope,
+            "Explain projections should preserve evidence envelopes when runtime/session contexts diverge.");
         AssertEx.True(
             projection.Evidence is { Count: > 0 }
             && !projection.Evidence.Any(pointer =>
@@ -550,7 +660,172 @@ internal static class CoreEngineTests
     {
         AssertGoldenJsonFixture("runtime-summary.golden.json", CreateRuntimeSummaryFixture());
         AssertGoldenJsonFixture("explain-trace.golden.json", CreateExplainTraceFixture());
+        AssertGoldenJsonFixture("runtime-lock-diff.golden.json", CreateRuntimeLockDiffFixture());
         AssertGoldenJsonFixture("session-ledger.golden.json", CreateSessionLedgerFixture());
+    }
+
+    private static void ContractNormalizationFixturesStayStable()
+    {
+        RuntimeLockInstallPreviewReceipt normalizedInstallPreviewA =
+            RuntimeCompatibilityContractNormalizer.NormalizeRuntimeLockInstallPreview(CreateRuntimeLockInstallPreviewFixtureA());
+        RuntimeLockInstallPreviewReceipt normalizedInstallPreviewB =
+            RuntimeCompatibilityContractNormalizer.NormalizeRuntimeLockInstallPreview(CreateRuntimeLockInstallPreviewFixtureB());
+        BuildKitManifest normalizedBuildKitManifestA =
+            RuntimeCompatibilityContractNormalizer.NormalizeBuildKitManifest(CreateBuildKitManifestFixtureA());
+        BuildKitManifest normalizedBuildKitManifestB =
+            RuntimeCompatibilityContractNormalizer.NormalizeBuildKitManifest(CreateBuildKitManifestFixtureB());
+        RuntimeLockInstallCandidate normalizedInstallCandidateA =
+            RuntimeCompatibilityContractNormalizer.NormalizeRuntimeLockInstallCandidate(CreateRuntimeLockInstallCandidateFixtureA());
+        RuntimeLockInstallCandidate normalizedInstallCandidateB =
+            RuntimeCompatibilityContractNormalizer.NormalizeRuntimeLockInstallCandidate(CreateRuntimeLockInstallCandidateFixtureB());
+
+        AssertEx.Equal(
+            JsonSerializer.Serialize(normalizedInstallPreviewA, GoldenJsonOptions),
+            JsonSerializer.Serialize(normalizedInstallPreviewB, GoldenJsonOptions),
+            "Runtime-lock install previews should normalize order-insensitive inputs into a deterministic payload shape.");
+        AssertEx.Equal(
+            JsonSerializer.Serialize(normalizedBuildKitManifestA, GoldenJsonOptions),
+            JsonSerializer.Serialize(normalizedBuildKitManifestB, GoldenJsonOptions),
+            "BuildKit manifests should normalize order-insensitive inputs into a deterministic payload shape.");
+        AssertEx.Equal(
+            JsonSerializer.Serialize(normalizedInstallCandidateA, GoldenJsonOptions),
+            JsonSerializer.Serialize(normalizedInstallCandidateB, GoldenJsonOptions),
+            "Runtime compatibility candidates should normalize diagnostics into a deterministic payload shape.");
+
+        AssertGoldenJsonFixture("runtime-lock-install-preview.normalized.golden.json", normalizedInstallPreviewA);
+        AssertGoldenJsonFixture("buildkit-manifest.normalized.golden.json", normalizedBuildKitManifestA);
+        AssertGoldenJsonFixture("runtime-lock-install-candidate.normalized.golden.json", normalizedInstallCandidateA);
+    }
+
+    private static void SessionAndRuntimeCompatibilityProjectionsStayDeterministic()
+    {
+        CharacterVersionReference baseCharacterVersion = new("char-1", "ver-1", RulesetDefaults.Sr5, "sha256:test");
+        SessionEventEnvelope olderEvent = new(
+            EventId: "evt-older",
+            OverlayId: "overlay-1",
+            BaseCharacterVersion: baseCharacterVersion,
+            DeviceId: "device-1",
+            ActorId: "actor-1",
+            Sequence: 7,
+            EventType: SessionOverlayEventKinds.PinChanged,
+            Payload: new Dictionary<string, RulesetCapabilityValue>(StringComparer.Ordinal)
+            {
+                ["actionId"] = RulesetCapabilityBridge.FromObject("quick-heal"),
+                ["isPinned"] = RulesetCapabilityBridge.FromObject(false)
+            },
+            CreatedAtUtc: DateTimeOffset.UnixEpoch.AddSeconds(1));
+        SessionEventEnvelope newerEvent = new(
+            EventId: "evt-newer",
+            OverlayId: "overlay-1",
+            BaseCharacterVersion: baseCharacterVersion,
+            DeviceId: "device-1",
+            ActorId: "actor-1",
+            Sequence: 7,
+            EventType: SessionOverlayEventKinds.PinChanged,
+            Payload: new Dictionary<string, RulesetCapabilityValue>(StringComparer.Ordinal)
+            {
+                ["actionId"] = RulesetCapabilityBridge.FromObject("quick-heal"),
+                ["isPinned"] = RulesetCapabilityBridge.FromObject(true)
+            },
+            CreatedAtUtc: DateTimeOffset.UnixEpoch.AddSeconds(2));
+
+        DefaultSessionOverlayProjectionService sessionService = new();
+        SessionOverlayProjection projectionA = sessionService.Replay(
+            overlayId: "overlay-1",
+            characterId: "char-1",
+            runtimeFingerprint: "sha256:test",
+            events: [newerEvent, olderEvent]);
+        SessionOverlayProjection projectionB = sessionService.Replay(
+            overlayId: "overlay-1",
+            characterId: "char-1",
+            runtimeFingerprint: "sha256:test",
+            events: [olderEvent, newerEvent]);
+
+        AssertEx.SequenceEqual(
+            projectionA.AppliedEvents.Select(static candidate => candidate.EventId),
+            projectionB.AppliedEvents.Select(static candidate => candidate.EventId),
+            "Session replay should deterministically order same-sequence envelopes by timestamp and event id.");
+        AssertEx.SequenceEqual(
+            projectionA.PinnedActionIds,
+            projectionB.PinnedActionIds,
+            "Session replay should project stable compatibility state regardless of caller event ordering.");
+        AssertEx.SequenceEqual(
+            projectionA.PinnedActionIds,
+            ["quick-heal"],
+            "Session replay should resolve same-sequence pin changes consistently.");
+
+        DefaultHubProjectCompatibilityService compatibilityService = new(
+            new RulesetPluginRegistry([new Sr5RulesetPlugin()]),
+            new RulePackRegistryServiceStub(
+            [
+                CreateRulePackEntry(
+                    packId: "house-rules",
+                    capabilities:
+                    [
+                        new RulePackCapabilityDescriptor(RulePackCapabilityIds.DeriveStat, RulePackAssetKinds.Lua, RulePackAssetModes.AddProvider)
+                    ]),
+                CreateRulePackEntry(
+                    packId: "combat-pack",
+                    capabilities:
+                    [
+                        new RulePackCapabilityDescriptor(RulePackCapabilityIds.SessionQuickActions, RulePackAssetKinds.Lua, RulePackAssetModes.AddProvider, SessionSafe: true)
+                    ])
+            ]),
+            new RuleProfileRegistryServiceStub([CreateProfile()]),
+            new BuildKitRegistryServiceStub(
+            [
+                CreateBuildKitRegistryEntry("buildkit-a", CreateBuildKitManifestFixtureA()),
+                CreateBuildKitRegistryEntry("buildkit-b", CreateBuildKitManifestFixtureB())
+            ]),
+            new RuntimeLockRegistryServiceStub(
+            [
+                CreateRuntimeLockRegistryEntry(
+                    lockId: "runtime-a",
+                    runtimeLock: CreateCompatibilityRuntimeLockFixtureA()),
+                CreateRuntimeLockRegistryEntry(
+                    lockId: "runtime-b",
+                    runtimeLock: CreateCompatibilityRuntimeLockFixtureB() with { RulesetId = RulesetDefaults.Sr5 })
+            ]));
+
+        HubProjectCompatibilityMatrix? runtimeMatrixA = compatibilityService.GetMatrix(
+            OwnerScope.LocalSingleUser,
+            HubCatalogItemKinds.RuntimeLock,
+            "runtime-a",
+            RulesetDefaults.Sr5);
+        HubProjectCompatibilityMatrix? runtimeMatrixB = compatibilityService.GetMatrix(
+            OwnerScope.LocalSingleUser,
+            HubCatalogItemKinds.RuntimeLock,
+            "runtime-b",
+            RulesetDefaults.Sr5);
+        AssertEx.NotNull(runtimeMatrixA, "Runtime compatibility matrix should resolve for runtime-a.");
+        AssertEx.NotNull(runtimeMatrixB, "Runtime compatibility matrix should resolve for runtime-b.");
+
+        AssertEx.SequenceEqual(
+            runtimeMatrixA!.Rows.Select(FormatCompatibilityRow),
+            runtimeMatrixB!.Rows.Select(FormatCompatibilityRow),
+            "Runtime compatibility projections should remain deterministic across runtime lock ordering variance.");
+        AssertEx.SequenceEqual(
+            runtimeMatrixA.Capabilities?.Select(FormatCapabilityProjection) ?? [],
+            runtimeMatrixB.Capabilities?.Select(FormatCapabilityProjection) ?? [],
+            "Runtime compatibility capability projections should remain deterministic across runtime lock ordering variance.");
+
+        HubProjectCompatibilityMatrix? buildKitMatrixA = compatibilityService.GetMatrix(
+            OwnerScope.LocalSingleUser,
+            HubCatalogItemKinds.BuildKit,
+            "buildkit-a",
+            RulesetDefaults.Sr5);
+        HubProjectCompatibilityMatrix? buildKitMatrixB = compatibilityService.GetMatrix(
+            OwnerScope.LocalSingleUser,
+            HubCatalogItemKinds.BuildKit,
+            "buildkit-b",
+            RulesetDefaults.Sr5);
+        AssertEx.NotNull(buildKitMatrixA, "BuildKit compatibility matrix should resolve for buildkit-a.");
+        AssertEx.NotNull(buildKitMatrixB, "BuildKit compatibility matrix should resolve for buildkit-b.");
+
+        AssertEx.SequenceEqual(
+            buildKitMatrixA!.Rows.Select(FormatCompatibilityRow),
+            buildKitMatrixB!.Rows.Select(FormatCompatibilityRow),
+            "BuildKit compatibility projections should remain deterministic across runtime-requirement ordering variance.");
     }
 
     private static void LocalizationFallbackHelpersNormalizeLegacyContracts()
@@ -909,6 +1184,111 @@ internal static class CoreEngineTests
         AssertEx.NotNull(scoredVariant, "Build Lab should resolve exact variant ids when scoring a generated variant.");
     }
 
+    private static void ValidationSummaryAndExplainHookCompositionStayDeterministic()
+    {
+        DefaultExplainHookComposer explainHookComposer = new();
+        DefaultValidationSummaryService validationSummaryService = new();
+
+        ExplainHookReference ledgerExplain = explainHookComposer.CreateReference(
+            targetKind: "ledger-entry",
+            targetId: "ledger-2",
+            traceId: "trace-ledger-2",
+            subjectId: "ledger-2",
+            capabilityId: "validate.choice",
+            providerId: "provider.alpha",
+            packId: "pack.alpha",
+            runtimeFingerprint: "sha256:runtime-1");
+        ExplainHookReference timelineExplain = explainHookComposer.CreateReference(
+            targetKind: "timeline-event",
+            targetId: "timeline-2",
+            traceId: "trace-timeline-2",
+            subjectId: "timeline-2",
+            capabilityId: "validate.choice",
+            providerId: "provider.alpha",
+            packId: "pack.alpha",
+            runtimeFingerprint: "sha256:runtime-1");
+        ExplainHookComposition composition = explainHookComposer.Compose(
+            compositionId: "validation-run",
+            attachments:
+            [
+                new ExplainHookAttachment("timeline-event", "timeline-2", timelineExplain),
+                new ExplainHookAttachment("ledger-entry", "ledger-2", ledgerExplain),
+                new ExplainHookAttachment("timeline-event", "timeline-2", timelineExplain)
+            ]);
+
+        ValidationSummary summary = validationSummaryService.BuildSummary(
+            scopeKind: "Session",
+            scopeId: "session-7",
+            diagnostics:
+            [
+                new RulesetCapabilityDiagnostic(
+                    Code: "journal.timeline.ledger-missing",
+                    Message: "journal.timeline.ledger-missing",
+                    Severity: RulesetCapabilityDiagnosticSeverities.Warning,
+                    MessageKey: "journal.timeline.ledger-missing",
+                    MessageParameters:
+                    [
+                        new RulesetExplainParameter("subjectId", RulesetCapabilityBridge.FromObject("timeline-2")),
+                        new RulesetExplainParameter("providerId", RulesetCapabilityBridge.FromObject("provider.alpha")),
+                        new RulesetExplainParameter("packId", RulesetCapabilityBridge.FromObject("pack.alpha"))
+                    ]),
+                new RulesetCapabilityDiagnostic(
+                    Code: "journal.timeline.invalid-range",
+                    Message: "journal.timeline.invalid-range",
+                    Severity: RulesetCapabilityDiagnosticSeverities.Error,
+                    MessageKey: "journal.timeline.invalid-range",
+                    MessageParameters:
+                    [
+                        new RulesetExplainParameter("subjectId", RulesetCapabilityBridge.FromObject("timeline-2")),
+                        new RulesetExplainParameter("capabilityId", RulesetCapabilityBridge.FromObject("validate.choice"))
+                    ]),
+                new RulesetCapabilityDiagnostic(
+                    Code: "journal.ledger.note-missing",
+                    Message: "journal.ledger.note-missing",
+                    Severity: RulesetCapabilityDiagnosticSeverities.Warning,
+                    MessageKey: "journal.ledger.note-missing",
+                    MessageParameters:
+                    [
+                        new RulesetExplainParameter("subjectId", RulesetCapabilityBridge.FromObject("ledger-2")),
+                        new RulesetExplainParameter("providerId", RulesetCapabilityBridge.FromObject("provider.alpha")),
+                        new RulesetExplainParameter("packId", RulesetCapabilityBridge.FromObject("pack.alpha"))
+                    ])
+            ],
+            runtimeFingerprint: "sha256:runtime-1",
+            explainHooksByCode: new Dictionary<string, ExplainHookReference>(StringComparer.Ordinal)
+            {
+                ["journal.ledger.note-missing"] = ledgerExplain,
+                ["journal.timeline.ledger-missing"] = timelineExplain
+            });
+
+        AssertEx.SequenceEqual(
+            composition.Attachments.Select(static entry => $"{entry.TargetKind}:{entry.TargetId}:{entry.Explain.HookId}"),
+            [
+                "ledger-entry:ledger-2:ledger-entry:ledger-2:trace-ledger-2",
+                "timeline-event:timeline-2:timeline-event:timeline-2:trace-timeline-2"
+            ],
+            "Explain-hook composition should deduplicate and sort deterministic attachment keys.");
+        AssertEx.Equal(
+            ValidationSummaryStates.Invalid,
+            summary.State,
+            "Validation summaries should become invalid when at least one error diagnostic exists.");
+        AssertEx.Equal(
+            "validation.summary.invalid",
+            ValidationSummaryLocalization.ResolveSummaryKey(summary),
+            "Validation summaries should expose localization-safe summary keys.");
+        AssertEx.SequenceEqual(
+            summary.Failures.Select(static failure => failure.Code),
+            ["journal.timeline.invalid-range", "journal.ledger.note-missing", "journal.timeline.ledger-missing"],
+            "Validation summary failures should sort deterministically by severity then code.");
+        AssertEx.True(
+            summary.Failures.All(static failure => string.Equals(failure.RuntimeFingerprint, "sha256:runtime-1", StringComparison.Ordinal)),
+            "Validation summary failures should carry normalized runtime fingerprint context.");
+        AssertEx.True(
+            string.Equals(summary.Failures[1].Explain?.HookId, "ledger-entry:ledger-2:trace-ledger-2", StringComparison.Ordinal)
+            && string.Equals(summary.Failures[2].Explain?.HookId, "timeline-event:timeline-2:trace-timeline-2", StringComparison.Ordinal),
+            "Validation summaries should attach explain-hook references for downstream integration surfaces.");
+    }
+
     private static void ContentInstallPreviewsEmitLocalizationKeys()
     {
         RuleProfileApplyTarget sessionLedgerTarget = new(RuleProfileApplyTargetKinds.SessionLedger, "session-1");
@@ -1226,6 +1606,401 @@ internal static class CoreEngineTests
             new ArtifactInstallState(ArtifactInstallStates.Available));
     }
 
+    private static RuntimeLockInstallPreviewReceipt CreateRuntimeLockInstallPreviewFixtureA()
+    {
+        return new RuntimeLockInstallPreviewReceipt(
+            LockId: "runtime-lock-a",
+            Target: new RuleProfileApplyTarget(RuleProfileApplyTargetKinds.SessionLedger, "session-a"),
+            RuntimeLock: CreateCompatibilityRuntimeLockFixtureA(),
+            Changes:
+            [
+                new RuntimeLockInstallPreviewItem(
+                    Kind: RuntimeLockInstallPreviewChangeKinds.SessionReplayRequired,
+                    Summary: "runtime.lock.install.preview.session-replay-required",
+                    SubjectId: "session-a",
+                    RequiresConfirmation: true,
+                    SummaryParameters:
+                    [
+                        new RulesetExplainParameter("targetId", RulesetCapabilityBridge.FromObject("session-a")),
+                        new RulesetExplainParameter("targetKind", RulesetCapabilityBridge.FromObject(RuleProfileApplyTargetKinds.SessionLedger))
+                    ]),
+                new RuntimeLockInstallPreviewItem(
+                    Kind: RuntimeLockInstallPreviewChangeKinds.RuntimeLockPinned,
+                    Summary: "runtime.lock.install.preview.runtime-lock-pinned",
+                    SubjectId: "runtime-lock-a",
+                    SummaryParameters:
+                    [
+                        new RulesetExplainParameter("runtimeFingerprint", RulesetCapabilityBridge.FromObject("sha256:compat-runtime")),
+                        new RulesetExplainParameter("lockId", RulesetCapabilityBridge.FromObject("runtime-lock-a"))
+                    ])
+            ],
+            Warnings:
+            [
+                new RuntimeInspectorWarning(
+                    Kind: RuntimeInspectorWarningKinds.Trust,
+                    Severity: RuntimeInspectorWarningSeverityLevels.Info,
+                    Message: "runtime.lock.install.warning.local-only",
+                    SubjectId: "runtime-lock-a"),
+                new RuntimeInspectorWarning(
+                    Kind: RuntimeInspectorWarningKinds.ProviderBinding,
+                    Severity: RuntimeInspectorWarningSeverityLevels.Warning,
+                    Message: "runtime.lock.install.warning.runtime-review",
+                    SubjectId: "runtime-lock-a",
+                    MessageParameters:
+                    [
+                        new RulesetExplainParameter("rulePackCount", RulesetCapabilityBridge.FromObject(2))
+                    ]),
+            ],
+            RequiresConfirmation: false);
+    }
+
+    private static RuntimeLockInstallPreviewReceipt CreateRuntimeLockInstallPreviewFixtureB()
+    {
+        return new RuntimeLockInstallPreviewReceipt(
+            LockId: "runtime-lock-a",
+            Target: new RuleProfileApplyTarget(RuleProfileApplyTargetKinds.SessionLedger, "session-a"),
+            RuntimeLock: CreateCompatibilityRuntimeLockFixtureB(),
+            Changes:
+            [
+                new RuntimeLockInstallPreviewItem(
+                    Kind: RuntimeLockInstallPreviewChangeKinds.RuntimeLockPinned,
+                    Summary: "runtime.lock.install.preview.runtime-lock-pinned",
+                    SubjectId: "runtime-lock-a",
+                    SummaryKey: "runtime.lock.install.preview.runtime-lock-pinned",
+                    SummaryParameters:
+                    [
+                        new RulesetExplainParameter("lockId", RulesetCapabilityBridge.FromObject("runtime-lock-a")),
+                        new RulesetExplainParameter("runtimeFingerprint", RulesetCapabilityBridge.FromObject("sha256:compat-runtime"))
+                    ]),
+                new RuntimeLockInstallPreviewItem(
+                    Kind: RuntimeLockInstallPreviewChangeKinds.SessionReplayRequired,
+                    Summary: "runtime.lock.install.preview.session-replay-required",
+                    SubjectId: "session-a",
+                    RequiresConfirmation: true,
+                    SummaryKey: "runtime.lock.install.preview.session-replay-required",
+                    SummaryParameters:
+                    [
+                        new RulesetExplainParameter("targetKind", RulesetCapabilityBridge.FromObject(RuleProfileApplyTargetKinds.SessionLedger)),
+                        new RulesetExplainParameter("targetId", RulesetCapabilityBridge.FromObject("session-a"))
+                    ])
+            ],
+            Warnings:
+            [
+                new RuntimeInspectorWarning(
+                    Kind: RuntimeInspectorWarningKinds.ProviderBinding,
+                    Severity: RuntimeInspectorWarningSeverityLevels.Warning,
+                    Message: "runtime.lock.install.warning.runtime-review",
+                    SubjectId: "runtime-lock-a",
+                    MessageKey: "runtime.lock.install.warning.runtime-review",
+                    MessageParameters:
+                    [
+                        new RulesetExplainParameter("rulePackCount", RulesetCapabilityBridge.FromObject(2))
+                    ]),
+                new RuntimeInspectorWarning(
+                    Kind: RuntimeInspectorWarningKinds.Trust,
+                    Severity: RuntimeInspectorWarningSeverityLevels.Info,
+                    Message: "runtime.lock.install.warning.local-only",
+                    SubjectId: "runtime-lock-a",
+                    MessageKey: "runtime.lock.install.warning.local-only")
+            ],
+            RequiresConfirmation: true);
+    }
+
+    private static BuildKitManifest CreateBuildKitManifestFixtureA()
+    {
+        return new BuildKitManifest(
+            BuildKitId: "starter-kit",
+            Version: "1.0.0",
+            Title: "Starter Kit",
+            Description: "BuildKit normalization fixture.",
+            Targets: [RulesetDefaults.Sr5, " SR5 "],
+            RuntimeRequirements:
+            [
+                new BuildKitRuntimeRequirement(
+                    RulesetId: " SR5 ",
+                    RequiredRuntimeFingerprints: ["sha256:b", "sha256:a", "sha256:b"],
+                    RequiredRulePacks:
+                    [
+                        new ArtifactVersionReference("house-rules", "1.0.0"),
+                        new ArtifactVersionReference("combat-pack", "2.0.0")
+                    ])
+            ],
+            Prompts:
+            [
+                new BuildKitPromptDescriptor(
+                    PromptId: " path ",
+                    Kind: BuildKitPromptKinds.Choice,
+                    Label: " Path ",
+                    Options:
+                    [
+                        new BuildKitPromptOption(" mage ", " Mage "),
+                        new BuildKitPromptOption(" street ", " Street ")
+                    ],
+                    Required: true),
+                new BuildKitPromptDescriptor(
+                    PromptId: "priority",
+                    Kind: BuildKitPromptKinds.Choice,
+                    Label: "Priority",
+                    Options:
+                    [
+                        new BuildKitPromptOption("A", "A"),
+                        new BuildKitPromptOption("B", "B")
+                    ])
+            ],
+            Actions:
+            [
+                new BuildKitActionDescriptor(
+                    ActionId: " set-note ",
+                    Kind: BuildKitActionKinds.SetMetadata,
+                    TargetId: "workspace",
+                    Notes: " starter "),
+                new BuildKitActionDescriptor(
+                    ActionId: "apply-path",
+                    Kind: BuildKitActionKinds.ApplyChoice,
+                    TargetId: "career-path",
+                    PromptId: "path")
+            ],
+            Visibility: " local-only ",
+            TrustTier: " local-only ");
+    }
+
+    private static BuildKitManifest CreateBuildKitManifestFixtureB()
+    {
+        return new BuildKitManifest(
+            BuildKitId: "starter-kit",
+            Version: "1.0.0",
+            Title: "Starter Kit",
+            Description: "BuildKit normalization fixture.",
+            Targets: ["sr5"],
+            RuntimeRequirements:
+            [
+                new BuildKitRuntimeRequirement(
+                    RulesetId: "sr5",
+                    RequiredRuntimeFingerprints: ["sha256:a", "sha256:b"],
+                    RequiredRulePacks:
+                    [
+                        new ArtifactVersionReference("combat-pack", "2.0.0"),
+                        new ArtifactVersionReference("house-rules", "1.0.0")
+                    ])
+            ],
+            Prompts:
+            [
+                new BuildKitPromptDescriptor(
+                    PromptId: "priority",
+                    Kind: BuildKitPromptKinds.Choice,
+                    Label: "Priority",
+                    Options:
+                    [
+                        new BuildKitPromptOption("B", "B"),
+                        new BuildKitPromptOption("A", "A")
+                    ]),
+                new BuildKitPromptDescriptor(
+                    PromptId: "path",
+                    Kind: BuildKitPromptKinds.Choice,
+                    Label: "Path",
+                    Options:
+                    [
+                        new BuildKitPromptOption("street", "Street"),
+                        new BuildKitPromptOption("mage", "Mage")
+                    ],
+                    Required: true)
+            ],
+            Actions:
+            [
+                new BuildKitActionDescriptor(
+                    ActionId: "apply-path",
+                    Kind: BuildKitActionKinds.ApplyChoice,
+                    TargetId: "career-path",
+                    PromptId: "path"),
+                new BuildKitActionDescriptor(
+                    ActionId: "set-note",
+                    Kind: BuildKitActionKinds.SetMetadata,
+                    TargetId: "workspace",
+                    Notes: "starter")
+            ],
+            Visibility: ArtifactVisibilityModes.LocalOnly,
+            TrustTier: ArtifactTrustTiers.LocalOnly);
+    }
+
+    private static RuntimeLockInstallCandidate CreateRuntimeLockInstallCandidateFixtureA()
+    {
+        return new RuntimeLockInstallCandidate(
+            TargetKind: RuleProfileApplyTargetKinds.SessionLedger,
+            TargetId: "session-a",
+            Entry: CreateRuntimeLockRegistryEntry("runtime-lock-a", CreateCompatibilityRuntimeLockFixtureA()),
+            Diagnostics:
+            [
+                new RuntimeLockCompatibilityDiagnostic(
+                    State: RuntimeLockCompatibilityStates.MissingPack,
+                    Message: "runtime.lock.compatibility.missing-pack",
+                    RequiredRulesetId: RulesetDefaults.Sr5,
+                    RequiredRuntimeFingerprint: "sha256:compat-runtime",
+                    MessageParameters:
+                    [
+                        new RulesetExplainParameter("version", RulesetCapabilityBridge.FromObject("1.0.0")),
+                        new RulesetExplainParameter("packId", RulesetCapabilityBridge.FromObject("missing-pack"))
+                    ]),
+                new RuntimeLockCompatibilityDiagnostic(
+                    State: RuntimeLockCompatibilityStates.RebindRequired,
+                    Message: "runtime.lock.compatibility.rebind-required",
+                    RequiredRulesetId: RulesetDefaults.Sr5,
+                    RequiredRuntimeFingerprint: "sha256:compat-runtime")
+            ],
+            CanInstall: true);
+    }
+
+    private static RuntimeLockInstallCandidate CreateRuntimeLockInstallCandidateFixtureB()
+    {
+        return new RuntimeLockInstallCandidate(
+            TargetKind: RuleProfileApplyTargetKinds.SessionLedger,
+            TargetId: "session-a",
+            Entry: CreateRuntimeLockRegistryEntry("runtime-lock-a", CreateCompatibilityRuntimeLockFixtureB()),
+            Diagnostics:
+            [
+                new RuntimeLockCompatibilityDiagnostic(
+                    State: RuntimeLockCompatibilityStates.RebindRequired,
+                    Message: "runtime.lock.compatibility.rebind-required",
+                    RequiredRulesetId: RulesetDefaults.Sr5,
+                    RequiredRuntimeFingerprint: "sha256:compat-runtime",
+                    MessageKey: "runtime.lock.compatibility.rebind-required"),
+                new RuntimeLockCompatibilityDiagnostic(
+                    State: RuntimeLockCompatibilityStates.MissingPack,
+                    Message: "runtime.lock.compatibility.missing-pack",
+                    RequiredRulesetId: RulesetDefaults.Sr5,
+                    RequiredRuntimeFingerprint: "sha256:compat-runtime",
+                    MessageKey: "runtime.lock.compatibility.missing-pack",
+                    MessageParameters:
+                    [
+                        new RulesetExplainParameter("packId", RulesetCapabilityBridge.FromObject("missing-pack")),
+                        new RulesetExplainParameter("version", RulesetCapabilityBridge.FromObject("1.0.0"))
+                    ])
+            ],
+            CanInstall: false);
+    }
+
+    private static ResolvedRuntimeLock CreateCompatibilityRuntimeLockFixtureA()
+    {
+        return new ResolvedRuntimeLock(
+            RulesetId: RulesetDefaults.Sr5,
+            ContentBundles:
+            [
+                new ContentBundleDescriptor(
+                    BundleId: "content-bundle-z",
+                    RulesetId: RulesetDefaults.Sr5,
+                    Version: "1.0.0",
+                    Title: "Content Z",
+                    Description: "Z bundle",
+                    AssetPaths: ["z.xml", "a.xml"]),
+                new ContentBundleDescriptor(
+                    BundleId: "content-bundle-a",
+                    RulesetId: RulesetDefaults.Sr5,
+                    Version: "1.0.0",
+                    Title: "Content A",
+                    Description: "A bundle",
+                    AssetPaths: ["b.xml", "a.xml"])
+            ],
+            RulePacks:
+            [
+                new ArtifactVersionReference("house-rules", "1.0.0"),
+                new ArtifactVersionReference("combat-pack", "2.0.0")
+            ],
+            ProviderBindings: new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                [RulePackCapabilityIds.SessionQuickActions] = "combat-pack/session.quick-actions",
+                [RulePackCapabilityIds.DeriveStat] = "house-rules/derive.stat"
+            },
+            EngineApiVersion: "rulepack-v1",
+            RuntimeFingerprint: "sha256:compat-runtime");
+    }
+
+    private static ResolvedRuntimeLock CreateCompatibilityRuntimeLockFixtureB()
+    {
+        return new ResolvedRuntimeLock(
+            RulesetId: " sr5 ",
+            ContentBundles:
+            [
+                new ContentBundleDescriptor(
+                    BundleId: "content-bundle-a",
+                    RulesetId: " sr5 ",
+                    Version: "1.0.0",
+                    Title: "Content A",
+                    Description: "A bundle",
+                    AssetPaths: ["a.xml", "b.xml"]),
+                new ContentBundleDescriptor(
+                    BundleId: "content-bundle-z",
+                    RulesetId: "sr5",
+                    Version: "1.0.0",
+                    Title: "Content Z",
+                    Description: "Z bundle",
+                    AssetPaths: ["a.xml", "z.xml"])
+            ],
+            RulePacks:
+            [
+                new ArtifactVersionReference("combat-pack", "2.0.0"),
+                new ArtifactVersionReference("house-rules", "1.0.0")
+            ],
+            ProviderBindings: new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                [RulePackCapabilityIds.DeriveStat] = "house-rules/derive.stat",
+                [RulePackCapabilityIds.SessionQuickActions] = "combat-pack/session.quick-actions"
+            },
+            EngineApiVersion: "rulepack-v1",
+            RuntimeFingerprint: "sha256:compat-runtime");
+    }
+
+    private static RuntimeLockRegistryEntry CreateRuntimeLockRegistryEntry(string lockId, ResolvedRuntimeLock runtimeLock)
+    {
+        return new RuntimeLockRegistryEntry(
+            LockId: lockId,
+            Owner: OwnerScope.LocalSingleUser,
+            Title: $"{lockId} title",
+            Visibility: ArtifactVisibilityModes.LocalOnly,
+            CatalogKind: RuntimeLockCatalogKinds.Saved,
+            RuntimeLock: runtimeLock,
+            UpdatedAtUtc: DateTimeOffset.UnixEpoch.AddHours(2),
+            Install: new ArtifactInstallState(ArtifactInstallStates.Available));
+    }
+
+    private static BuildKitRegistryEntry CreateBuildKitRegistryEntry(string buildKitId, BuildKitManifest manifest)
+    {
+        BuildKitManifest normalizedManifest = RuntimeCompatibilityContractNormalizer.NormalizeBuildKitManifest(
+            manifest with { BuildKitId = buildKitId });
+        return new BuildKitRegistryEntry(
+            Manifest: normalizedManifest,
+            Owner: OwnerScope.LocalSingleUser,
+            Visibility: ArtifactVisibilityModes.LocalOnly,
+            PublicationStatus: BuildKitPublicationStatuses.Published,
+            UpdatedAtUtc: DateTimeOffset.UnixEpoch.AddHours(2));
+    }
+
+    private static string FormatCompatibilityRow(HubProjectCompatibilityRow row)
+    {
+        return string.Join(
+            "|",
+            row.Kind,
+            row.State,
+            row.CurrentValue,
+            row.RequiredValue ?? string.Empty,
+            row.Notes ?? string.Empty,
+            row.LabelKey ?? string.Empty,
+            row.CurrentValueKey ?? string.Empty,
+            row.RequiredValueKey ?? string.Empty,
+            row.NotesKey ?? string.Empty,
+            string.Join(",", (row.NotesParameters ?? []).OrderBy(static parameter => parameter.Name, StringComparer.Ordinal).Select(static parameter => $"{parameter.Name}:{parameter.Value.StringValue ?? parameter.Value.IntegerValue?.ToString() ?? string.Empty}")));
+    }
+
+    private static string FormatCapabilityProjection(HubProjectCapabilityDescriptorProjection capability)
+    {
+        return string.Join(
+            "|",
+            capability.CapabilityId,
+            capability.ProviderId ?? string.Empty,
+            capability.PackId ?? string.Empty,
+            capability.SessionSafe,
+            capability.Explainable,
+            capability.TitleKey ?? string.Empty);
+    }
+
     private sealed class RuleProfileRegistryServiceStub : IRuleProfileRegistryService
     {
         private readonly IReadOnlyList<RuleProfileRegistryEntry> _entries;
@@ -1262,6 +2037,33 @@ internal static class CoreEngineTests
 
         public RulePackRegistryEntry? Get(OwnerScope owner, string packId, string? rulesetId = null)
             => _entries.FirstOrDefault(entry => string.Equals(entry.Manifest.PackId, packId, StringComparison.Ordinal));
+    }
+
+    private sealed class BuildKitRegistryServiceStub : IBuildKitRegistryService
+    {
+        private readonly IReadOnlyList<BuildKitRegistryEntry> _entries;
+
+        public BuildKitRegistryServiceStub(IReadOnlyList<BuildKitRegistryEntry> entries)
+        {
+            _entries = entries;
+        }
+
+        public IReadOnlyList<BuildKitRegistryEntry> List(OwnerScope owner, string? rulesetId = null)
+        {
+            string? normalizedRulesetId = RulesetDefaults.NormalizeOptional(rulesetId);
+            return _entries
+                .Where(entry => normalizedRulesetId is null || entry.Manifest.Targets.Any(target => string.Equals(target, normalizedRulesetId, StringComparison.Ordinal)))
+                .OrderBy(static entry => entry.Manifest.BuildKitId, StringComparer.Ordinal)
+                .ToArray();
+        }
+
+        public BuildKitRegistryEntry? Get(OwnerScope owner, string buildKitId, string? rulesetId = null)
+        {
+            string? normalizedRulesetId = RulesetDefaults.NormalizeOptional(rulesetId);
+            return _entries.FirstOrDefault(entry =>
+                string.Equals(entry.Manifest.BuildKitId, buildKitId, StringComparison.Ordinal)
+                && (normalizedRulesetId is null || entry.Manifest.Targets.Any(target => string.Equals(target, normalizedRulesetId, StringComparison.Ordinal))));
+        }
     }
 
     private sealed class RuntimeLockRegistryServiceStub : IRuntimeLockRegistryService
@@ -1681,6 +2483,42 @@ internal static class CoreEngineTests
 
     private static ExplainTraceDto CreateExplainTraceFixture()
     {
+        ExplainProvenanceDto provenance = new(
+            RuntimeFingerprint: "sha256:golden-runtime",
+            RulesetId: RulesetDefaults.Sr5,
+            EngineApiVersion: "engine-v2",
+            CatalogKind: RuntimeLockCatalogKinds.Published,
+            RuntimeTitle: "Official SR5 Runtime",
+            ProfileId: "official.sr5.ops",
+            ProfileTitle: "Operations Profile",
+            ProviderId: "combat-pack/derive.initiative",
+            PackId: "combat-pack",
+            RulePacks: ["combat-pack", "quality-pack"],
+            ProviderBindings: new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                [RulePackCapabilityIds.DeriveStat] = "combat-pack/derive.initiative",
+                [RulePackCapabilityIds.SessionQuickActions] = "combat-pack/session.quickaction"
+            });
+        ExplainEvidencePointerDto[] evidence =
+        [
+            new ExplainEvidencePointerDto(
+                Kind: RulesetEvidencePointerKinds.RuntimeLock,
+                Pointer: "sha256:golden-runtime",
+                LabelKey: "ruleset.explain.evidence.runtime-lock",
+                LabelParameters:
+                [
+                    new RulesetExplainParameter("runtimeFingerprint", RulesetCapabilityBridge.FromObject("sha256:golden-runtime"))
+                ]),
+            new ExplainEvidencePointerDto(
+                Kind: RulesetEvidencePointerKinds.RuleProfile,
+                Pointer: "official.sr5.ops",
+                LabelKey: "ruleset.explain.evidence.rule-profile",
+                LabelParameters:
+                [
+                    new RulesetExplainParameter("profileId", RulesetCapabilityBridge.FromObject("official.sr5.ops"))
+                ])
+        ];
+
         return new ExplainTraceDto(
             TargetKey: "initiative.total",
             FinalValue: RulesetCapabilityBridge.FromObject(14),
@@ -1734,41 +2572,81 @@ internal static class CoreEngineTests
                     Certain: null,
                     RuleId: null)
             ],
-            Provenance: new ExplainProvenanceDto(
-                RuntimeFingerprint: "sha256:golden-runtime",
-                RulesetId: RulesetDefaults.Sr5,
-                EngineApiVersion: "engine-v2",
-                CatalogKind: RuntimeLockCatalogKinds.Published,
-                RuntimeTitle: "Official SR5 Runtime",
-                ProfileId: "official.sr5.ops",
-                ProfileTitle: "Operations Profile",
+            Provenance: provenance,
+            Evidence: evidence,
+            ProvenanceEnvelope: new ExplainProvenanceEnvelopeDto(
+                Schema: ExplainEnvelopeSchemas.ProvenanceV1,
+                Provenance: provenance,
+                CapabilityId: RulePackCapabilityIds.DeriveStat,
                 ProviderId: "combat-pack/derive.initiative",
-                PackId: "combat-pack",
-                RulePacks: ["combat-pack", "quality-pack"],
-                ProviderBindings: new Dictionary<string, string>(StringComparer.Ordinal)
-                {
-                    [RulePackCapabilityIds.DeriveStat] = "combat-pack/derive.initiative",
-                    [RulePackCapabilityIds.SessionQuickActions] = "combat-pack/session.quickaction"
-                }),
-            Evidence:
+                PackId: "combat-pack"),
+            EvidenceEnvelope: new ExplainEvidenceEnvelopeDto(
+                Schema: ExplainEnvelopeSchemas.EvidenceV1,
+                Pointers: evidence,
+                CapabilityId: RulePackCapabilityIds.DeriveStat,
+                ProviderId: "combat-pack/derive.initiative",
+                PackId: "combat-pack"));
+    }
+
+    private static RuntimeLockDiffProjection CreateRuntimeLockDiffFixture()
+    {
+        DefaultRuntimeLockDiffService service = new();
+
+        ResolvedRuntimeLock before = new(
+            RulesetId: RulesetDefaults.Sr5,
+            ContentBundles:
             [
-                new ExplainEvidencePointerDto(
-                    Kind: RulesetEvidencePointerKinds.RuntimeLock,
-                    Pointer: "sha256:golden-runtime",
-                    LabelKey: "ruleset.explain.evidence.runtime-lock",
-                    LabelParameters:
-                    [
-                        new RulesetExplainParameter("runtimeFingerprint", RulesetCapabilityBridge.FromObject("sha256:golden-runtime"))
-                    ]),
-                new ExplainEvidencePointerDto(
-                    Kind: RulesetEvidencePointerKinds.RuleProfile,
-                    Pointer: "official.sr5.ops",
-                    LabelKey: "ruleset.explain.evidence.rule-profile",
-                    LabelParameters:
-                    [
-                        new RulesetExplainParameter("profileId", RulesetCapabilityBridge.FromObject("official.sr5.ops"))
-                    ])
-            ]);
+                new ContentBundleDescriptor(
+                    BundleId: "official.sr5.base",
+                    RulesetId: RulesetDefaults.Sr5,
+                    Version: "schema-1",
+                    Title: "SR5 Base",
+                    Description: "Built-in base content.",
+                    AssetPaths: ["data/", "lang/"])
+            ],
+            RulePacks:
+            [
+                new ArtifactVersionReference("combat-pack", "1.0.0")
+            ],
+            ProviderBindings: new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                [RulePackCapabilityIds.DeriveStat] = "combat-pack/derive.initiative"
+            },
+            EngineApiVersion: "engine-v1",
+            RuntimeFingerprint: "sha256:before");
+        ResolvedRuntimeLock after = new(
+            RulesetId: RulesetDefaults.Sr5,
+            ContentBundles:
+            [
+                new ContentBundleDescriptor(
+                    BundleId: "campaign.seattle",
+                    RulesetId: RulesetDefaults.Sr5,
+                    Version: "2026.03",
+                    Title: "Seattle Campaign",
+                    Description: "Campaign bundle.",
+                    AssetPaths: ["data/", "media/"]),
+                new ContentBundleDescriptor(
+                    BundleId: "official.sr5.base",
+                    RulesetId: RulesetDefaults.Sr5,
+                    Version: "schema-1",
+                    Title: "SR5 Base",
+                    Description: "Built-in base content.",
+                    AssetPaths: ["data/", "lang/"])
+            ],
+            RulePacks:
+            [
+                new ArtifactVersionReference("combat-pack", "1.1.0"),
+                new ArtifactVersionReference("quality-pack", "2.0.0")
+            ],
+            ProviderBindings: new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                [RulePackCapabilityIds.DeriveStat] = "combat-pack/derive.initiative.v2",
+                [RulePackCapabilityIds.SessionQuickActions] = "quality-pack/session.quickaction"
+            },
+            EngineApiVersion: "engine-v2",
+            RuntimeFingerprint: "sha256:after");
+
+        return service.Diff(before, after);
     }
 
     private static SessionLedger CreateSessionLedgerFixture()
@@ -1821,29 +2699,14 @@ internal static class CoreEngineTests
     {
         string repositoryRoot = GetRepositoryRoot();
         string coreContractsRoot = Path.Combine(repositoryRoot, "Chummer.Contracts");
+        string runContractsRoot = Path.Combine(repositoryRoot, "Chummer.Run.Contracts");
         string presentationContractsRoot = Path.Combine(repositoryRoot, "Chummer.Presentation.Contracts");
         string runServicesContractsRoot = Path.Combine(repositoryRoot, "Chummer.RunServices.Contracts");
-        string[] hostedConcernDirectories =
-        [
-            Path.Combine(coreContractsRoot, "AI"),
-            Path.Combine(coreContractsRoot, "Hub")
-        ];
-
-        foreach (string hostedConcernDirectory in hostedConcernDirectories)
-        {
-            if (!Directory.Exists(hostedConcernDirectory))
-            {
-                continue;
-            }
-
-            string[] leakedSources = Directory.EnumerateFiles(hostedConcernDirectory, "*.cs", SearchOption.AllDirectories).ToArray();
-            AssertEx.True(
-                leakedSources.Length == 0,
-                $"Hosted-service contract sources leaked into engine-owned contracts: {string.Join(", ", leakedSources.Select(path => Path.GetRelativePath(repositoryRoot, path)))}.");
-        }
+        AssertEx.True(!Directory.Exists(presentationContractsRoot), "Temporary project root 'Chummer.Presentation.Contracts' should be deleted.");
+        AssertEx.True(!Directory.Exists(runServicesContractsRoot), "Temporary project root 'Chummer.RunServices.Contracts' should be deleted.");
 
         string corePresentationContractsDirectory = Path.Combine(coreContractsRoot, "Presentation");
-        string[] coreOwnedSharedContracts =
+        string[] canonicalPresentationContracts =
         [
             "AppCommandCatalogResponse.cs",
             "AppCommandDefinition.cs",
@@ -1851,31 +2714,7 @@ internal static class CoreEngineTests
             "NavigationTabCatalogResponse.cs",
             "NavigationTabDefinition.cs",
             "WorkflowSurfaceContracts.cs",
-            "WorkspaceSurfaceActionDefinition.cs"
-        ];
-        if (Directory.Exists(corePresentationContractsDirectory))
-        {
-            string[] leakedPresentationContracts = Directory.EnumerateFiles(corePresentationContractsDirectory, "*.cs", SearchOption.TopDirectoryOnly)
-                .Where(path => !coreOwnedSharedContracts.Contains(Path.GetFileName(path), StringComparer.Ordinal))
-                .ToArray();
-            AssertEx.True(
-                leakedPresentationContracts.Length == 0,
-                $"Presentation contract sources leaked into Chummer.Contracts: {string.Join(", ", leakedPresentationContracts.Select(path => Path.GetRelativePath(repositoryRoot, path)))}.");
-        }
-
-        foreach (string fileName in coreOwnedSharedContracts)
-        {
-            string canonicalContractPath = Path.Combine(coreContractsRoot, "Presentation", fileName);
-            AssertEx.True(
-                File.Exists(canonicalContractPath),
-                $"Core-owned contract '{fileName}' should live under Chummer.Contracts.");
-            AssertEx.True(
-                !File.Exists(Path.Combine(presentationContractsRoot, "Presentation", fileName)),
-                $"Core-owned contract '{fileName}' must not remain under Chummer.Presentation.Contracts.");
-        }
-
-        string[] presentationOwnedContracts =
-        [
+            "WorkspaceSurfaceActionDefinition.cs",
             "BrowseQueryContracts.cs",
             "BrowseWorkspaceContracts.cs",
             "BuildKitWorkbenchContracts.cs",
@@ -1885,20 +2724,136 @@ internal static class CoreEngineTests
             "ShellBootstrapContracts.cs"
         ];
 
-        foreach (string fileName in presentationOwnedContracts)
+        foreach (string fileName in canonicalPresentationContracts)
         {
-            string movedContractPath = Path.Combine(presentationContractsRoot, "Presentation", fileName);
             AssertEx.True(
-                File.Exists(movedContractPath),
-                $"Presentation-owned contract '{fileName}' should live under Chummer.Presentation.Contracts.");
-            AssertEx.True(
-                !File.Exists(Path.Combine(corePresentationContractsDirectory, fileName)),
-                $"Presentation-owned contract '{fileName}' must not remain under Chummer.Contracts.");
+                File.Exists(Path.Combine(corePresentationContractsDirectory, fileName)),
+                $"Canonical presentation contract '{fileName}' should live under Chummer.Contracts/Presentation.");
         }
 
-        string[] hostedContractSources = Directory.EnumerateFiles(runServicesContractsRoot, "*.cs", SearchOption.AllDirectories)
+        string coreAiContractsDirectory = Path.Combine(runContractsRoot, "AI");
+        string[] canonicalAiContracts =
+        [
+            "AiActionPreviewContracts.cs",
+            "AiApprovalContracts.cs",
+            "AiBuildIdeaCatalogContracts.cs",
+            "AiCoachLaunchContracts.cs",
+            "AiConversationCatalogContracts.cs",
+            "AiDigestContracts.cs",
+            "AiEvaluationContracts.cs",
+            "AiExplainContracts.cs",
+            "AiGatewayContracts.cs",
+            "AiHistoryDraftContracts.cs",
+            "AiHubProjectSearchContracts.cs",
+            "AiMediaAssetContracts.cs",
+            "AiMediaContracts.cs",
+            "AiMediaQueueContracts.cs",
+            "AiPortraitPromptContracts.cs",
+            "AiPromptRegistryContracts.cs",
+            "AiRecapDraftContracts.cs",
+            "AiTranscriptContracts.cs",
+            "BuildIdeaCardContracts.cs"
+        ];
+
+        foreach (string fileName in canonicalAiContracts)
+        {
+            AssertEx.True(
+                File.Exists(Path.Combine(coreAiContractsDirectory, fileName)),
+                $"Canonical AI contract '{fileName}' should live under Chummer.Run.Contracts/AI.");
+        }
+
+        string coreHubContractsDirectory = Path.Combine(runContractsRoot, "Hub");
+        string[] canonicalHubContracts =
+        [
+            "HubCatalogContracts.cs",
+            "HubProjectCompatibilityContracts.cs",
+            "HubProjectDetailContracts.cs",
+            "HubProjectInstallPreviewContracts.cs",
+            "HubPublicationContracts.cs",
+            "HubPublisherContracts.cs",
+            "HubReviewContracts.cs"
+        ];
+
+        foreach (string fileName in canonicalHubContracts)
+        {
+            AssertEx.True(
+                File.Exists(Path.Combine(coreHubContractsDirectory, fileName)),
+                $"Canonical hub contract '{fileName}' should live under Chummer.Run.Contracts/Hub.");
+        }
+
+        string coreContentContractsDirectory = Path.Combine(coreContractsRoot, "Content");
+        string[] coreOwnedRuntimeInstallAndBuildKitContracts =
+        [
+            "RuntimeLockInstallContracts.cs",
+            "RuntimeLockRegistryContracts.cs",
+            "BuildKitRegistryContracts.cs",
+            "BuildKitApplicationContracts.cs",
+            "ArtifactContracts.cs"
+        ];
+
+        foreach (string fileName in coreOwnedRuntimeInstallAndBuildKitContracts)
+        {
+            string canonicalPath = Path.Combine(coreContentContractsDirectory, fileName);
+            AssertEx.True(
+                File.Exists(canonicalPath),
+                $"A6.1 canonical contract '{fileName}' should live under Chummer.Contracts/Content.");
+        }
+
+        string runtimeLockInstallContractsText = File.ReadAllText(Path.Combine(coreContentContractsDirectory, "RuntimeLockInstallContracts.cs"));
+        AssertEx.True(
+            runtimeLockInstallContractsText.Contains("BuildKitSelection", StringComparison.Ordinal)
+            && runtimeLockInstallContractsText.Contains("RuntimeLockInstallReceipt", StringComparison.Ordinal),
+            "Runtime lock install DTO ownership should keep BuildKit-selection install payloads in Chummer.Contracts.");
+
+        string runtimeLockRegistryContractsText = File.ReadAllText(Path.Combine(coreContentContractsDirectory, "RuntimeLockRegistryContracts.cs"));
+        AssertEx.True(
+            runtimeLockRegistryContractsText.Contains("RuntimeLockCompatibilityDiagnostic", StringComparison.Ordinal)
+            && runtimeLockRegistryContractsText.Contains("RuntimeLockInstallPreviewReceipt", StringComparison.Ordinal),
+            "Runtime compatibility diagnostics and install preview receipts should remain engine-owned contracts.");
+
+        string buildKitApplicationContractsText = File.ReadAllText(Path.Combine(coreContentContractsDirectory, "BuildKitApplicationContracts.cs"));
+        AssertEx.True(
+            buildKitApplicationContractsText.Contains("BuildKitValidationReceipt", StringComparison.Ordinal)
+            && buildKitApplicationContractsText.Contains("BuildKitApplicationReceipt", StringComparison.Ordinal),
+            "BuildKit validation and application DTOs should remain engine-owned contracts.");
+
+        string buildKitManifestContractsText = File.ReadAllText(Path.Combine(coreContentContractsDirectory, "ArtifactContracts.cs"));
+        AssertEx.True(
+            buildKitManifestContractsText.Contains("BuildKitManifest", StringComparison.Ordinal)
+            && buildKitManifestContractsText.Contains("BuildKitRuntimeRequirement", StringComparison.Ordinal),
+            "BuildKit manifest and runtime requirement DTOs should remain engine-owned contracts.");
+
+        string buildKitWorkbenchContractsPath = Path.Combine(corePresentationContractsDirectory, "BuildKitWorkbenchContracts.cs");
+        AssertEx.True(
+            File.Exists(buildKitWorkbenchContractsPath),
+            "BuildKit workbench projection contracts should remain canonical under Chummer.Contracts/Presentation.");
+
+        string hubCompatibilityContractsPath = Path.Combine(coreHubContractsDirectory, "HubProjectCompatibilityContracts.cs");
+        AssertEx.True(
+            File.Exists(hubCompatibilityContractsPath),
+            "Hub compatibility matrix projections should remain canonical under Chummer.Run.Contracts/Hub.");
+
+        string hubInstallPreviewContractsPath = Path.Combine(coreHubContractsDirectory, "HubProjectInstallPreviewContracts.cs");
+        AssertEx.True(
+            File.Exists(hubInstallPreviewContractsPath),
+            "Hub install preview projections should remain canonical under Chummer.Run.Contracts/Hub.");
+
+        string coreContentContractsText = string.Join(
+            "\n",
+            Directory.EnumerateFiles(coreContentContractsDirectory, "*.cs", SearchOption.TopDirectoryOnly).Select(File.ReadAllText));
+        AssertEx.True(
+            !coreContentContractsText.Contains("BuildKitWorkbenchSurfaceIds", StringComparison.Ordinal)
+            && !coreContentContractsText.Contains("HubProjectCompatibilityMatrix", StringComparison.Ordinal)
+            && !coreContentContractsText.Contains("HubProjectInstallPreviewReceipt", StringComparison.Ordinal),
+            "Presentation and run-services compatibility projection DTOs must not leak into engine-owned content contracts.");
+
+        string[] hostedContractSources = Directory
+            .EnumerateFiles(runContractsRoot, "*.cs", SearchOption.AllDirectories)
             .Where(path => path.Contains($"{Path.DirectorySeparatorChar}AI{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
                 || path.Contains($"{Path.DirectorySeparatorChar}Hub{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            .Concat(
+                Directory.EnumerateFiles(coreContractsRoot, "*.cs", SearchOption.AllDirectories)
+                    .Where(path => path.Contains($"{Path.DirectorySeparatorChar}Presentation{Path.DirectorySeparatorChar}", StringComparison.Ordinal)))
             .ToArray();
 
         foreach (string hostedContractSource in hostedContractSources)
@@ -1911,13 +2866,11 @@ internal static class CoreEngineTests
 
             AssertEx.True(
                 duplicates.Length == 0,
-                $"Hosted contract '{fileName}' was duplicated outside run-services ownership: {string.Join(", ", duplicates.Select(path => Path.GetRelativePath(repositoryRoot, path)))}.");
+                $"Canonical contract '{fileName}' was duplicated outside Chummer.Contracts/Chummer.Run.Contracts ownership: {string.Join(", ", duplicates.Select(path => Path.GetRelativePath(repositoryRoot, path)))}.");
         }
 
-        string runServicesContractsProjectPath = Path.Combine(runServicesContractsRoot, "Chummer.RunServices.Contracts.csproj");
         string[] projectPaths = Directory.EnumerateFiles(repositoryRoot, "*.csproj", SearchOption.AllDirectories)
             .Where(path => !IsGeneratedOrBuildArtifact(path))
-            .Where(path => !string.Equals(path, runServicesContractsProjectPath, StringComparison.Ordinal))
             .ToArray();
 
         foreach (string projectPath in projectPaths)
@@ -1928,13 +2881,13 @@ internal static class CoreEngineTests
                 && !projectText.Contains(@"../Chummer.RunServices.Contracts/AI/", StringComparison.Ordinal)
                 && !projectText.Contains(@"..\Chummer.RunServices.Contracts\Hub\", StringComparison.Ordinal)
                 && !projectText.Contains(@"../Chummer.RunServices.Contracts/Hub/", StringComparison.Ordinal),
-                $"Project '{Path.GetRelativePath(repositoryRoot, projectPath)}' must consume hosted contracts via project/package ownership, not by compiling AI/Hub source files directly.");
+                $"Project '{Path.GetRelativePath(repositoryRoot, projectPath)}' must not depend on deleted temporary contract project paths.");
             AssertEx.True(
-                !projectText.Contains(@"..\Chummer.Contracts\AI\", StringComparison.Ordinal)
-                && !projectText.Contains(@"../Chummer.Contracts/AI/", StringComparison.Ordinal)
-                && !projectText.Contains(@"..\Chummer.Contracts\Hub\", StringComparison.Ordinal)
-                && !projectText.Contains(@"../Chummer.Contracts/Hub/", StringComparison.Ordinal),
-                $"Project '{Path.GetRelativePath(repositoryRoot, projectPath)}' reintroduced hosted AI/Hub contract source paths under engine ownership.");
+                !projectText.Contains(@"..\Chummer.Run.Contracts\AI\", StringComparison.Ordinal)
+                && !projectText.Contains(@"../Chummer.Run.Contracts/AI/", StringComparison.Ordinal)
+                && !projectText.Contains(@"..\Chummer.Run.Contracts\Hub\", StringComparison.Ordinal)
+                && !projectText.Contains(@"../Chummer.Run.Contracts/Hub/", StringComparison.Ordinal),
+                $"Project '{Path.GetRelativePath(repositoryRoot, projectPath)}' should consume canonical contracts via assembly reference, not by compiling individual AI/Hub source files directly.");
         }
     }
 
@@ -1999,6 +2952,16 @@ internal static class CoreEngineTests
             !queueText.Contains("Remaining hardening and integration work is still tracked as coarse queue slices rather than milestone-mapped task coverage", StringComparison.Ordinal),
             "Published queue overlay should not regress back to the coarse hardening/integration queue slice.");
         AssertEx.True(
+            !queueText.Contains("Cross-repo contract reset work is not yet represented as explicit core milestones", StringComparison.Ordinal),
+            "Published queue overlay should keep cross-repo contract reset follow-through mapped to explicit executable milestones.");
+        AssertEx.True(
+            queueText.Contains("Milestone `A0.5`", StringComparison.Ordinal)
+            && queueText.Contains("`WL-072`", StringComparison.Ordinal)
+            && queueText.Contains("Chummer.Presentation.Contracts", StringComparison.Ordinal)
+            && queueText.Contains("Chummer.RunServices.Contracts", StringComparison.Ordinal)
+            && !queueText.Contains("Temporary source-project leaks such as `Chummer.Presentation.Contracts` and `Chummer.RunServices.Contracts` still need deletion after the contract plane cutover.", StringComparison.Ordinal),
+            "Published queue overlay should map temporary contract source-project deletion to the executable A0.5/WL-072 follow-through item.");
+        AssertEx.True(
             projectMilestonesText.Contains("milestone_coverage_complete: true", StringComparison.Ordinal)
             && projectMilestonesText.Contains("A0.5", StringComparison.Ordinal)
             && projectMilestonesText.Contains("WL-072", StringComparison.Ordinal)
@@ -2006,6 +2969,8 @@ internal static class CoreEngineTests
             && projectMilestonesText.Contains("work_items:", StringComparison.Ordinal)
             && projectMilestonesText.Contains("id: A6.1", StringComparison.Ordinal)
             && projectMilestonesText.Contains("worklist: WL-073", StringComparison.Ordinal)
+            && projectMilestonesText.Contains("status: done", StringComparison.Ordinal)
+            && projectMilestonesText.Contains("A6.1 locked canonical ownership line", StringComparison.Ordinal)
             && projectMilestonesText.Contains("id: A6.2", StringComparison.Ordinal)
             && projectMilestonesText.Contains("worklist: WL-074", StringComparison.Ordinal)
             && projectMilestonesText.Contains("id: A6.3", StringComparison.Ordinal)
@@ -2075,8 +3040,9 @@ internal static class CoreEngineTests
         foreach (string surface in quarantinedSurfaces)
         {
             AssertEx.True(
-                scopeText.Contains(surface, StringComparison.Ordinal),
-                $"Implementation scope should explicitly classify '{surface}' as quarantined non-engine scope.");
+                scopeText.Contains(surface, StringComparison.Ordinal)
+                || projectMilestonesText.Contains(surface, StringComparison.Ordinal),
+                $"Implementation scope or milestone registry should explicitly classify '{surface}' as quarantined non-engine scope.");
             AssertEx.True(
                 projectMilestonesText.Contains(surface, StringComparison.Ordinal),
                 $"Project milestone registry should explicitly map quarantined surface '{surface}'.");

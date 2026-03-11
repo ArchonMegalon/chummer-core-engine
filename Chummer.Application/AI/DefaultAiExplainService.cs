@@ -89,6 +89,16 @@ public sealed class DefaultAiExplainService : IAiExplainService
         AiExplainValueProvenanceProjection provenance = BuildProvenance(runtimeSummary, sessionDigest, resolvedProviderId, packId, invocation);
         IReadOnlyList<AiExplainEvidencePointerProjection> evidence = BuildEvidence(runtimeSummary, sessionDigest, descriptor, resolvedProviderId, packId, invocation);
         IReadOnlyList<AiExplainTraceStepProjection> trace = BuildTrace(runtimeSummary, sessionDigest, descriptor, resolvedProviderId, packId, invocation);
+        AiExplainValueProvenanceEnvelopeProjection provenanceEnvelope = BuildProvenanceEnvelope(
+            descriptor,
+            resolvedProviderId,
+            packId,
+            provenance);
+        AiExplainEvidenceEnvelopeProjection evidenceEnvelope = BuildEvidenceEnvelope(
+            descriptor,
+            resolvedProviderId,
+            packId,
+            evidence);
 
         return new AiExplainValueProjection(
             ExplainEntryId: explainEntryId,
@@ -112,7 +122,9 @@ public sealed class DefaultAiExplainService : IAiExplainService
             Diagnostics: invocation.Diagnostics,
             Provenance: provenance,
             Trace: trace,
-            Evidence: evidence);
+            Evidence: evidence,
+            ProvenanceEnvelope: provenanceEnvelope,
+            EvidenceEnvelope: evidenceEnvelope);
     }
 
     private static IReadOnlyList<RulesetCapabilityArgument> BuildInvocationArguments(
@@ -272,6 +284,34 @@ public sealed class DefaultAiExplainService : IAiExplainService
             PackId: packId,
             RulePacks: runtimeSummary.RulePacks,
             ProviderBindings: new Dictionary<string, string>(runtimeSummary.ProviderBindings, StringComparer.Ordinal));
+    }
+
+    private static AiExplainValueProvenanceEnvelopeProjection BuildProvenanceEnvelope(
+        RulesetCapabilityDescriptor descriptor,
+        string? providerId,
+        string? packId,
+        AiExplainValueProvenanceProjection provenance)
+    {
+        return new AiExplainValueProvenanceEnvelopeProjection(
+            Schema: AiExplainEnvelopeSchemas.ProvenanceV1,
+            Provenance: provenance,
+            CapabilityId: descriptor.CapabilityId,
+            ProviderId: providerId,
+            PackId: packId);
+    }
+
+    private static AiExplainEvidenceEnvelopeProjection BuildEvidenceEnvelope(
+        RulesetCapabilityDescriptor descriptor,
+        string? providerId,
+        string? packId,
+        IReadOnlyList<AiExplainEvidencePointerProjection> evidence)
+    {
+        return new AiExplainEvidenceEnvelopeProjection(
+            Schema: AiExplainEnvelopeSchemas.EvidenceV1,
+            Pointers: evidence,
+            CapabilityId: descriptor.CapabilityId,
+            ProviderId: providerId,
+            PackId: packId);
     }
 
     private static IReadOnlyList<AiExplainTraceStepProjection> BuildTrace(
@@ -502,7 +542,7 @@ public sealed class DefaultAiExplainService : IAiExplainService
                     ]));
         }
 
-        return evidence.Values.ToArray();
+        return SortEvidence(evidence.Values);
     }
 
     private static string ResolveEntryKind(RulesetCapabilityDescriptor descriptor)
@@ -646,7 +686,18 @@ public sealed class DefaultAiExplainService : IAiExplainService
             AddEvidence(merged, pointer);
         }
 
-        return merged.Values.ToArray();
+        return SortEvidence(merged.Values);
+    }
+
+    private static IReadOnlyList<AiExplainEvidencePointerProjection> SortEvidence(IEnumerable<AiExplainEvidencePointerProjection> evidence)
+    {
+        return evidence
+            .OrderBy(pointer => pointer.Kind, StringComparer.Ordinal)
+            .ThenBy(pointer => pointer.Pointer, StringComparer.Ordinal)
+            .ThenBy(pointer => pointer.ProviderId ?? string.Empty, StringComparer.Ordinal)
+            .ThenBy(pointer => pointer.PackId ?? string.Empty, StringComparer.Ordinal)
+            .ThenBy(pointer => pointer.RuleId ?? string.Empty, StringComparer.Ordinal)
+            .ToArray();
     }
 
     private static void AddEvidence(

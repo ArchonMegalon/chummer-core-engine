@@ -445,6 +445,10 @@ Exit:
 Deliver:
 - canonical contract ownership for engine-authored DTOs
 - compatibility and normalization coverage for runtime install, BuildKit, and session seams
+Work items:
+- A6.1 canonicalize runtime install and BuildKit DTO ownership
+- A6.2 add normalization fixtures for runtime install, BuildKit, and runtime compatibility DTOs
+- A6.3 harden session/runtime compatibility projection seams
 Exit:
 - engine-owned contracts are unambiguous and stable across package boundaries
 
@@ -453,6 +457,10 @@ Deliver:
 - keyed disabled-reason projections
 - provenance-complete explain outputs
 - runtime diff coverage for explain-facing flows
+Work items:
+- A7.1 expose keyed disabled-reason payloads across explainable selection/filter surfaces
+- A7.2 lock explain provenance and evidence envelopes
+- A7.3 add before/after runtime diff explain fixtures
 Exit:
 - explain consumers receive deterministic structured reasons and before/after runtime context
 
@@ -461,6 +469,10 @@ Deliver:
 - runtime fingerprint stability coverage
 - compile and provider-binding order regression coverage
 - deterministic pack resolution and compatibility projections
+Work items:
+- A8.1 harden runtime fingerprint byte-stability across ordering variance
+- A8.2 add compile-order and provider-binding determinism tests
+- A8.3 harden RulePack dependency resolution ordering
 Exit:
 - equivalent runtime inputs remain order-invariant and reproducible
 
@@ -469,6 +481,10 @@ Deliver:
 - reusable journal/ledger/timeline primitives
 - validation and explain-hook composition seams
 - structured backend outputs that presentation/run-services can consume directly
+Work items:
+- A9.1 add journal/ledger timeline projection primitives
+- A9.2 add validation summary and failure-envelope primitives
+- A9.3 add explain-hook composition seam for backend integrations
 Exit:
 - downstream repos do not need to re-derive engine mechanics for journal, validation, or explain composition
 

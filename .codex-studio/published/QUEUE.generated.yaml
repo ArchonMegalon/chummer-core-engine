@@ -1,9 +1,17 @@
 mode: append
 items:
-- Lock Milestones A6-A9 as executable coverage in `WORKLIST.md` and the core milestone
-  registry, mapping A6.1-A6.3, A7.1-A7.3, A8.1-A8.3, and A9.1-A9.3 as explicit
-  work items for contract hardening, Structured Explain API hardening, Runtime/RulePack
-  determinism hardening, and backend integration primitives.
-- Add milestone mapping or executable queue work for Temporary source-project leaks
-  such as `Chummer.Presentation.Contracts` and `Chummer.RunServices.Contracts` still
-  need deletion after the contract plane cutover..
+- Lock Milestones A6-A9 as executable coverage in `WORKLIST.md` and the core milestone registry, mapping A6.1-A6.3, A7.1-A7.3, A8.1-A8.3, and A9.1-A9.3 as explicit work items for contract hardening, Structured Explain API hardening, Runtime/RulePack determinism hardening, and backend integration primitives.
+- Track temporary contract source-project deletion as Milestone `A0.5` / worklist `WL-072`, covering package-only consumer cutover and final removal of `Chummer.Presentation.Contracts` and `Chummer.RunServices.Contracts` after the contract plane cutover.
+- Run `WL-073` (A6.1) to lock canonical ownership for runtime install, BuildKit, and compatibility DTO families, then update milestone evidence in `PROJECT_MILESTONES.yaml`.
+- Run `WL-074` (A6.2) and `WL-075` (A6.3) to add normalization fixtures and deterministic session/runtime compatibility projection tests for A6 closure.
+- Run `WL-079` (A8.1), `WL-080` (A8.2), and `WL-081` (A8.3) to lock fingerprint, compile-order, provider-binding, and dependency-resolution determinism regression coverage.
+- Run `WL-082` (A9.1), `WL-083` (A9.2), and `WL-084` (A9.3) to deliver journal/timeline, validation-summary, and explain-hook composition primitives for downstream integration.
+- Run `WL-072` (A0.5) after package-only consumer cutover to remove temporary source projects `Chummer.Presentation.Contracts` and `Chummer.RunServices.Contracts` from the core repo.
+- Keep hardening/integration execution mapped to explicit milestones by maintaining runnable A6-A9 worklist slices in `WORKLIST.md` and `.codex-design/repo/PROJECT_MILESTONES.yaml` whenever queue overlays are refreshed.
+- Keep cross-repo contract reset follow-through mapped as explicit core milestone `A0.5` and executable worklist `WL-072` until package-only consumer cutover allows deleting temporary source projects safely.
+- Keep remaining hardening and integration scope represented as milestone-mapped runnable slices (`A6`-`A9`) instead of coarse queue-only tracking whenever queue overlays refresh.
+- Keep `A0.5` / `WL-072` open and executable until package-only consumer cutover acceptance confirms temporary source-project deletion is safe to close.
+- 'Auditor candidate `44367` follow-through: append runnable backlog slices under `A0.5` (`WL-086`) so non-engine authority surfaces (presentation contracts, run-service contracts, browser infrastructure, and legacy helper tools) remain milestone-mapped until safe closure.'
+- 'Auditor candidate `44368` follow-through: append runnable deletion closure slice under `A0.5` (`WL-087`) so temporary source-project leaks (`Chummer.Presentation.Contracts`, `Chummer.RunServices.Contracts`) stay executable until package-only cutover acceptance.'
+- Relocate AI/media/approval/search hosted contract families into `Chummer.Run.Contracts` and leave only engine-owned DTOs in core.
+- Sync the approved Chummer design bundle into `core` under `.codex-design/` and refresh repo-local review context.

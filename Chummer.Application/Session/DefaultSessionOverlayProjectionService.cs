@@ -17,7 +17,13 @@ public sealed class DefaultSessionOverlayProjectionService : ISessionOverlayProj
         List<string> notes = [];
         List<RulesetCapabilityDiagnostic> diagnostics = [];
 
-        foreach (SessionEventEnvelope item in events.OrderBy(static candidate => candidate.Sequence))
+        SessionEventEnvelope[] orderedEvents = events
+            .OrderBy(static candidate => candidate.Sequence)
+            .ThenBy(static candidate => candidate.CreatedAtUtc)
+            .ThenBy(static candidate => candidate.EventId, StringComparer.Ordinal)
+            .ToArray();
+
+        foreach (SessionEventEnvelope item in orderedEvents)
         {
             if (!SessionOverlayEventValidator.AllowsEvent(item, diagnostics))
             {
@@ -54,7 +60,7 @@ public sealed class DefaultSessionOverlayProjectionService : ISessionOverlayProj
             OverlayId: overlayId,
             CharacterId: characterId,
             RuntimeFingerprint: runtimeFingerprint,
-            AppliedEvents: events.OrderBy(static candidate => candidate.Sequence).ToArray(),
+            AppliedEvents: orderedEvents,
             Trackers: trackers
                 .OrderBy(static pair => pair.Key, StringComparer.Ordinal)
                 .Select(static pair => new SessionOverlayTrackerState(pair.Key, pair.Value))
