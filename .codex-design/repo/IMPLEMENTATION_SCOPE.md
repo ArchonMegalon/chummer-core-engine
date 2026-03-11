@@ -48,3 +48,14 @@
 
 If a feature can be answered by deterministic mechanics or explain provenance, it belongs here.
 If it depends on HTTP, browser UX, player shell behavior, registry workflow, or render execution, it does not.
+
+
+## External integration note
+
+`chummer-core-engine` remains external-tool-agnostic.
+
+It may emit deterministic payloads or consume approved deterministic inputs for other repos to use, but it must not:
+
+* depend on provider SDKs
+* depend on third-party orchestration APIs
+* embed vendor-specific receipts as canonical engine truth
